@@ -19,7 +19,7 @@ def onExit():
 			unmodifiedFilePath = os.path.join(root, file)
 			if os.path.exists(unmodifiedFilePath):
 				shutil.copy2(unmodifiedFilePath, gameFilePath)
-				print(f"Restored {gameFilePath} from {unmodifiedFilePath}")
+				#print(f"Restored {gameFilePath} from {unmodifiedFilePath}")
 	shutil.rmtree(temp_dir, ignore_errors=True)
 atexit.register(onExit)
 temp_dir = tempfile.mkdtemp()
@@ -46,7 +46,6 @@ def setGameLocation():
 		settings["GameLocation"] = gamePath
 		with open("settings.json", "w") as f:
 			json.dump(settings, f, indent=4)
-		print(f"Game location set to: {gamePath}")
 
 def setModsLocation():
 	modsPath = filedialog.askdirectory()
@@ -54,10 +53,23 @@ def setModsLocation():
 		settings["ModsLocation"] = modsPath
 		with open("settings.json", "w") as f:
 			json.dump(settings, f, indent=4)
-		print(f"Mods location set to: {modsPath}")
 	os.mkdir(modsPath + "/" + "Unmodified Game Files")
 ### /MISC DEFS ###
 ### FUNCTIONS ###
+
+# Function to update mods.json with new mod data
+def updateModsConfig(modName, modData):
+	mods_config[modName] = {
+		"Enabled": modData.get("Enabled", True),
+		"Priority": modData.get("Priority", 0),
+		"Version": modData.get("Version", "1.0"),
+		"GameAbbreviation": modData.get("GameAbbreviation", ""),
+		"GameVersion": modData.get("GameVersion", ""),
+		"Description": modData.get("Description", "")
+	}
+	with open(mods_json_path, "w") as f:
+		json.dump(mods_config, f, indent=4)
+	print(f"Updated {modName} in mods.json")
 
 # Parse a mod folder
 def parseModFolder(modFolder):
@@ -66,37 +78,48 @@ def parseModFolder(modFolder):
 		with open(modJSONPath, "r") as f:
 			modData = json.load(f)
 		AssetsFolder = modData.get("AssetsFolder")
-		if AssetsFolder:
-			assetsPath = os.path.join(modFolder, AssetsFolder)
-			if os.path.exists(assetsPath):
-				for root, dirs, files in os.walk(assetsPath):
-					for file in files:
-						relativePath = os.path.relpath(os.path.join(root, file), assetsPath)
-						gameFilePath = os.path.join(gamePath, "www", relativePath)
-						unmodifiedFilePath = os.path.join(temp_dir, "Unmodified Game Files", relativePath)
+		modName = modData.get("Name")
+		if modName:
+			updateModsConfig(modName, modData)
+			if mods_config.get(modName, {}).get("Enabled", False):
+				if AssetsFolder:
+					assetsPath = os.path.join(modFolder, AssetsFolder)
+					if os.path.exists(assetsPath):
+						for root, dirs, files in os.walk(assetsPath):
+							for file in files:
+								relativePath = os.path.relpath(os.path.join(root, file), assetsPath)
+								gameFilePath = os.path.join(gamePath, "www", relativePath)
+								unmodifiedFilePath = os.path.join(temp_dir, "Unmodified Game Files", relativePath)
 
-						# Create directories in Unmodified Game Files if they don't exist
-						os.makedirs(os.path.dirname(unmodifiedFilePath), exist_ok=True)
+								# Create directories in Unmodified Game Files if they don't exist
+								os.makedirs(os.path.dirname(unmodifiedFilePath), exist_ok=True)
 
-						# Copy the original game file to Unmodified Game Files if it doesn't already exist
-						if not os.path.exists(unmodifiedFilePath):
-							if os.path.exists(gameFilePath):
-								shutil.copy2(gameFilePath, unmodifiedFilePath)
-								#print(f"Copied {gameFilePath} to {unmodifiedFilePath}")
-							else:
-								print(f"Game file {gameFilePath} does not exist!")
+								# Copy the original game file to Unmodified Game Files if it doesn't already exist
+								if not os.path.exists(unmodifiedFilePath):
+									if os.path.exists(gameFilePath):
+										shutil.copy2(gameFilePath, unmodifiedFilePath)
+									else:
+										print(f"Game file {gameFilePath} does not exist!")
 
-						# Replace the game file with the mod file
-						modFilePath = os.path.join(root, file)
-						if os.path.exists(modFilePath):
-							shutil.copy2(modFilePath, gameFilePath)
-							#print(f"Replaced {gameFilePath} with {modFilePath}")
-						else:
-							print(f"Mod file {modFilePath} does not exist!")
+								# Replace the game file with the mod file based on priority
+								modFilePath = os.path.join(root, file)
+								if os.path.exists(modFilePath):
+									if not os.path.exists(gameFilePath) or mods_config[modName]["Priority"] > mods_config.get(os.path.basename(gameFilePath), {}).get("Priority", -1):
+										shutil.copy2(modFilePath, gameFilePath)
+										mods_config[os.path.basename(gameFilePath)] = {"Priority": mods_config[modName]["Priority"]}
+										#print(f"Replaced {gameFilePath} with {modFilePath}")
+									else:
+										print(f"Skipping {modFilePath} due to lower priority")
+								else:
+									print(f"Mod file {modFilePath} does not exist!")
+					else:
+						print(f"Assets folder {assetsPath} does not exist!")
+				else:
+					print("\"AssetsFolder\" not specified in mod.json")
 			else:
-				print(f"Assets folder {assetsPath} does not exist!")
+				print(f"Mod {modName} is not enabled or not specified in mods.json")
 		else:
-			print("\"AssetsFolder\" not specified in mod.json")
+			print(f"mod.json does not contain a valid mod name")
 	else:
 		print(f"mod.json not found in {modFolder}")
 
@@ -109,18 +132,6 @@ def runGame():
 	else:
 		print(f"Game executable not found at {gameExecutable}")
 
-def applyMods():
-	# Sort mods by priority
-	sorted_mods = sorted(mods_config.items(), key=lambda x: x[1]["Priority"], reverse=True)
-	for mod_name, mod_info in sorted_mods:
-		if mod_info["Enabled"]:
-			modFolderName = mod_name
-			modFolderPath = os.path.join(temp_dir, modFolderName)
-			if os.path.exists(modFolderPath):
-				parseModFolder(modFolderPath)
-			else:
-				print(f"Mod folder {modFolderPath} does not exist!")
-
 ### /FUNCTIONS ###
 ### MAIN ###
 ## GET PATHS ##
@@ -128,14 +139,16 @@ gamePath = settings.get("GameLocation")
 modsPath = settings.get("ModsLocation")
 
 # Read or create mods.json
-mods_json_path = os.path.join(modsPath, "mods.json")
-print(mods_json_path)
-if not os.path.exists(mods_json_path):
+mods_json_path = modsPath + "/mods.json"
+if not os.path.exists(mods_json_path) or os.path.getsize(mods_json_path) == 0:
 	with open(mods_json_path, "w") as f:
 		json.dump({}, f, indent=4)
-
-with open(modsPath + "/" + "mods.json", "r") as f:
-	mods_config = json.load(f)
+try:
+	with open(mods_json_path) as f:
+		mods_config = json.load(f)
+except json.JSONDecodeError as e:
+	print(f"Error reading mods.json: {e}")
+	mods_config = {}
 
 # Check if SMC exists in the game path
 if not os.path.exists(gamePath + "/Super Mario Construct.exe"):
@@ -147,7 +160,6 @@ if not os.path.exists(modsPath) or modsPath == "":
 	print(f"Mods Folder does not exist!")
 	#exit()
 else:
-	print(f"\nFiles and Folders in {modsPath}")
 	for item in os.listdir(modsPath):
 		if not item:
 			print("No items found!")
@@ -156,17 +168,10 @@ else:
 			modFolderName = item[0:len(item)-4]
 			with ZipFile(modsPath + "/" + item, "r") as zip:
 				zip.extractall(temp_dir + "/" + modFolderName)
-				#print(f"Extracted {item} to {temp_dir}/{modFolderName}")
+				parseModFolder(temp_dir + "/" + modFolderName)
 		else:
 			pass
 			#print(f"\"{item}\" is not a .zip file.")
-
-applyMods()
-runGame()
-
-# print(f"\nFiles and Folders in {gamePath}")
-# for item in os.listdir(gamePath + "/www"):
-# 	print(item)
 ## /GET PATHS ##
 
 
