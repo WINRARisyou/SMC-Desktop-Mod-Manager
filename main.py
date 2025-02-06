@@ -7,6 +7,7 @@ import os
 import requests
 import shutil
 import subprocess
+import sys
 import tempfile
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -49,7 +50,7 @@ def saveAndPlay():
 		modsConfig[modName]["Enabled"] = var.get()
 		print(f"\n{modsConfig}")
 
-    # Write the updated modsConfig to mods.json
+	# Write the updated modsConfig to mods.json
 	with open(mods_json_path, "w") as f:
 		json.dump(modsConfig, f, indent=4)
 
@@ -74,7 +75,7 @@ if os.path.exists("settings.json"):
 		settings = json.load(f)
 else:
 	with open("settings.json", "w") as f:
-		json.dump({"GameLocation": "", "ModsLocation": ""}, f, indent=4)
+		json.dump({"GameLocation": "", "ModsLocation": "Mods"}, f, indent=4)
 	with open("settings.json") as f:
 		settings = json.load(f)
 
@@ -280,7 +281,9 @@ def runGame(reset=False):
 	gameExecutable = os.path.join(gamePath, "Super Mario Construct.exe")
 	if os.path.exists(gameExecutable):
 		process = subprocess.Popen([gameExecutable], cwd=gamePath)
-		process.wait()
+		while process.poll() is None:
+			window.update()  # Keep the GUI responsive
+			window.after(100)  # Wait for 100ms before checking again
 		if devMode:
 			print("Game exited")
 		if devMode:
@@ -297,7 +300,10 @@ gamePath = settings.get("GameLocation")
 modsPath = settings.get("ModsLocation")
 
 # Read or create mods.json
+local_appdata_path = os.path.expandvars("%localappdata")
 mods_json_path = modsPath + "/mods.json"
+if not os.path.exists(modsPath):
+	os.mkdir(modsPath)
 if not os.path.exists(mods_json_path) or os.path.getsize(mods_json_path) == 0:
 	with open(mods_json_path, "w") as f:
 		json.dump({}, f, indent=4)
@@ -333,7 +339,15 @@ def validateModsFolder(path):
 ## GUI ##
 # Create the main window
 window = tk.Tk()
-window.iconphoto(False, tk.PhotoImage(file='icon.png'))
+def resource_path(relative_path):
+	""" Get absolute path to resource, works for development and PyInstaller """
+	try:
+		base_path = sys._MEIPASS  # Temp directory for PyInstaller --onefile
+	except AttributeError:
+		base_path = os.path.abspath(".")  # Normal execution
+	return os.path.join(base_path, relative_path)
+icon_path = resource_path("icon.png")
+window.iconphoto(True, tk.PhotoImage(file=icon_path))
 window.title("SMC Desktop Mod Loader")
 window.geometry("832x480")
 
@@ -384,6 +398,35 @@ def createModList(sortedMods):
 	downButton = ttk.Button(buttonFrame, text="↓", width=3, command=lambda: moveMod(1))
 	downButton.pack(fill="none", pady=2)
 
+	# Frame for mod info label
+	modInfoFrame = tk.Frame(frame)
+	modInfoFrame.pack(side="right", padx=10, fill="both", expand=True)
+
+	# Add a canvas and scrollbar for the mod info label
+	canvas = tk.Canvas(modInfoFrame, width=100, height=200)
+	scrollbar = ttk.Scrollbar(modInfoFrame, orient="vertical", command=canvas.yview)
+	scrollable_frame = tk.Frame(canvas	)
+
+	# Configure the canvas to use the scrollbar
+	scrollable_frame.bind(
+		"<Configure>",
+		lambda e: canvas.configure(
+			scrollregion=canvas.bbox("all")
+		)
+	)
+
+	canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+	canvas.configure(yscrollcommand=scrollbar.set)
+
+	# Pack the canvas and scrollbar
+	canvas.pack(side="left", fill="both", expand=True)
+	scrollbar.pack(side="right", fill="y")
+
+	# Mod info label inside the scrollable frame
+	global modInfoLabel
+	modInfoLabel = tk.Label(scrollable_frame, text="", justify="center", wraplength=200)  # Adjusted wraplength
+	modInfoLabel.pack(fill="both", expand=True)
+
 
 	# Store checkboxes' states
 	global modVars
@@ -430,6 +473,18 @@ def createModList(sortedMods):
 				# Refresh UI & reselect moved item
 				updateModList()
 				modListbox.selection_set(newIndex)
+
+	def onModSelect(event):
+		selected = modListbox.curselection()
+		if selected:
+			index = selected[0]
+			modName, modData = sortedMods[index]
+			description = modData.get("Description", "No description available.")
+			modInfoLabel.config(text=f"{description}")
+			canvas.yview_moveto(0)
+
+	# Bind selection event to update mod info label
+	modListbox.bind("<<ListboxSelect>>", onModSelect)
 
 	# Bind double-click to toggle mod state
 	modListbox.bind("<Double-Button-1>", lambda e: toggleModState())
