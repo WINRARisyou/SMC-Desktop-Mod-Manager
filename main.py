@@ -1,5 +1,5 @@
 ### DEFS ###
-devMode = True
+devMode = False
 import atexit
 import ctypes
 import json
@@ -31,8 +31,7 @@ def restoreGameFiles():
 					print(f"Restored {gameFilesPath} from {unmodifiedFilePath}\n")
 
 def onExit():
-	pass
-	#shutil.rmtree(temp_dir, ignore_errors=True)
+	shutil.rmtree(temp_dir, ignore_errors=True)
 
 atexit.register(onExit)
 temp_dir = tempfile.mkdtemp()
@@ -42,13 +41,14 @@ os.mkdir(temp_dir + "/Unmodified Game Files")
 ### MISC DEFS ###
 global modVars
 modVars = {}
+global allModVersions
+allModVersions = {}
 def saveAndPlay():
 	global modifiedFiles, modVars
 	modifiedFiles = {}
 	# Save the current mod states to modsConfig
 	for modName, var in modVars.items():
 		modsConfig[modName]["Enabled"] = var.get()
-		print(f"\n{modsConfig}")
 
 	# Write the updated modsConfig to mods.json
 	with open(mods_json_path, "w") as f:
@@ -67,6 +67,27 @@ def saveAndPlay():
 					print(modFolderName + " extracted and parsed\n")
 		else:
 			pass
+	print(allModVersions)
+	for mod in allModVersions:
+		if allModVersions[mod] != currentGameVersion and modsConfig[mod]["Enabled"]:
+			msg = tk.messagebox.askyesnocancel(title="Possible Mod Incompatability", message=f"Mod \"{mod}\" may not be compatible with the current game version ({currentGameVersion}), as it was built for {allModVersions[mod]}.\nDo you want to disable it?", icon="warning")
+			match msg:
+				case False:
+					break
+				case True:
+					print('disable')
+					restoreGameFiles()
+					modsConfig[mod]["Enabled"] = False
+					createModList(sortModsByPriority(modsConfig))
+					with open(mods_json_path, "w") as f:
+						json.dump(modsConfig, f, indent=4)
+						parseModFolder(temp_dir + "/" + modFolderName)
+						saveAndPlay()
+						#runGame()
+					return
+				case _:
+					restoreGameFiles()
+					return
 	runGame()
 
 # Read settings.json
@@ -205,8 +226,9 @@ def parseModFolder(modFolder):
 			modData = json.load(f)
 		modName = modData.get("Name")
 		if modName:
+			global allModVersions
+			allModVersions[modName] = modData.get("GameVersion")
 			updateModsConfig(modName, modData)
-
 			if modsConfig.get(modName, {}).get("Enabled", False):
 				AssetsFolder = modData.get("AssetsFolder")
 				if AssetsFolder:
@@ -346,8 +368,8 @@ def resource_path(relative_path):
 	except AttributeError:
 		base_path = os.path.abspath(".")  # Normal execution
 	return os.path.join(base_path, relative_path)
-icon_path = resource_path("icon.png")
-window.iconphoto(True, tk.PhotoImage(file=icon_path))
+
+window.iconphoto(True, tk.PhotoImage(file=resource_path("icons/icon.png")))
 window.title("SMC Desktop Mod Loader")
 window.geometry("832x480")
 
@@ -439,15 +461,10 @@ def createModList(sortedMods):
 
 	def toggleModState():
 		selected = modListbox.curselection()
-		print(selected)
 		if selected:
 			index = selected[0]
-			print(index)
 			modName, modData = sortedMods[index]
-			print(sortedMods[index])
 			modVars[modName].set(not modVars[modName].get())  # Toggle state
-			print(modVars[modName].get())
-			print(sortedMods[index])
 			updateModList()
 
 	def moveMod(direction):
@@ -518,7 +535,7 @@ gameVersionLabel.pack(pady=10)
 gameVersionLabel.config(text=f"Current Game Version: {currentGameVersion}")
 
 
-# Run the application
+# Run it!!1!
 window.mainloop()
 ## /GUI ##
 ### /MAIN ###
