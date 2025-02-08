@@ -13,9 +13,9 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from zipfile import ZipFile
 
-global currentGameVersion
+global latestGameVersion
 response = requests.get("https://levelsharesquare.com/api/accesspoint/gameversion/SMC")
-currentGameVersion = response.json().get("version")
+latestGameVersion = response.json().get("version")
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 def restoreGameFiles():
@@ -69,8 +69,8 @@ def saveAndPlay():
 			pass
 	print(allModVersions)
 	for mod in allModVersions:
-		if allModVersions[mod] != currentGameVersion and modsConfig[mod]["Enabled"]:
-			msg = tk.messagebox.askyesnocancel(title="Possible Mod Incompatability", message=f"Mod \"{mod}\" may not be compatible with the current game version ({currentGameVersion}), as it was built for {allModVersions[mod]}.\nDo you want to disable it?", icon="warning")
+		if allModVersions[mod] != latestGameVersion and modsConfig[mod]["Enabled"]:
+			msg = tk.messagebox.askyesnocancel(title="Possible Mod Incompatability", message=f"Mod \"{mod}\" may not be compatible with the current game version ({latestGameVersion}), as it was built for {allModVersions[mod]}.\nDo you want to disable it?", icon="warning")
 			match msg:
 				case False:
 					break
@@ -108,7 +108,7 @@ def setGameLocation():
 		settings["GameLocation"] = gamePath
 		with open("settings.json", "w") as f:
 			json.dump(settings, f, indent=4)
-	else:
+	elif not gamePath == "":
 		setGameLocation()
 
 def setModsLocation():
@@ -532,7 +532,7 @@ createModList(sortedMods)
 # Create a label
 gameVersionLabel = tk.Label(window, text="")
 gameVersionLabel.pack(pady=10)
-gameVersionLabel.config(text=f"Current Game Version: {currentGameVersion}")
+#gameVersionLabel.config(text=f"Latest Game Version: {latestGameVersion}")
 
 
 # Run it!!1!
