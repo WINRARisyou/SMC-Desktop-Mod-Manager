@@ -14,8 +14,8 @@ from tkinter import filedialog, messagebox, ttk
 from zipfile import ZipFile
 
 global latestGameVersion
-response = requests.get("https://levelsharesquare.com/api/accesspoint/gameversion/SMC")
-latestGameVersion = response.json().get("version")
+#response = requests.get("https://levelsharesquare.com/api/accesspoint/gameversion/SMC")
+#latestGameVersion = response.json().get("version")
 ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 def restoreGameFiles():
@@ -88,19 +88,8 @@ def backupOriginalFile(gameFilesPath, unmodifiedFilePath):
 	else:
 		# If the game file or directory doesn't exist, mark it for deletion when the game is closed
 		print(f"Marking {gameFilesPath} for deletion")
-		if os.path.isdir(gameFilesPath):
-			print("dir")
-			for root, dirs, files in os.walk(gameFilesPath, topdown=False):
-				for name in files:
-					modFiles.append(os.path.join(root, name))
-				for name in dirs:
-					modFiles.append(os.path.join(root, name))
-		else:
+		if not os.path.isdir(gameFilesPath):
 			modFiles.append(gameFilesPath)
-		# Check if the directory of the game file exists, if not, add it to the nuke list
-		dirPath = os.path.dirname(gameFilesPath)
-		if not os.path.exists(dirPath):
-			modFiles.append(dirPath)
 
 def parseModFolder(modFolder):
 	# Get mod.json
@@ -160,6 +149,10 @@ def processFile(modID, modPriority, root, file, assetsPath):
 	gameFilesPath = os.path.join(gamePath, "www", relativePath)
 	unmodifiedFilePath = os.path.join(temp_dir, "Unmodified Game Files", relativePath)
 	modFilePath = os.path.join(root, file)
+
+	if not os.path.exists(os.path.dirname(gameFilesPath)):  # This means a mod created the directory
+		print(f"Marking {os.path.dirname(gameFilesPath)} for deletion")
+		modFiles.append(os.path.dirname(gameFilesPath))
 
 	os.makedirs(os.path.dirname(gameFilesPath), exist_ok=True)
 
@@ -377,7 +370,6 @@ def validateModsFolder(path):
 	else:
 		return True
 ## /GET PATHS ##
-
 ## GUI ##
 # Create the main window
 window = tk.Tk()
