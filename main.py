@@ -1,3 +1,4 @@
+# WINRARisyou was here
 ### DEFS ###
 devMode = False
 import atexit
@@ -584,6 +585,7 @@ createModList(sortedMods)
 ### Find way to get installed game version from www/data.json
 #gameVersionLabel = tk.Label(window, text="")
 #gameVersionLabel.pack(pady=10)
+# WINRARisyou was here
 #gameVersionLabel.config(text=f"Latest Game Version: {latestGameVersion}")
 
 # Run it!!1!
