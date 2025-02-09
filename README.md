@@ -25,20 +25,21 @@ Way to manage replacing game files in Super Mario Construct
 ## Building from Source
 1. **Clone the reposity**
 	- You can either run:
-	```sh
+	```bash
 	git clone https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager
 	```
 	or you can download this repository as a .zip file, and unpack it wherever you want.
 
 2. **Install Dependencies**:
-	- Run the `install-deps.bat` script to install the required Python modules.
+	- Install [Python](https://python.org)
+	- Run `install-deps.bat` to install the required Python modules.
 
 3. **Build the Executable**:
 	- Use PyInstaller to build the executable.
 	- Open a command prompt and navigate to the project directory.
 	- Execute the following command:
 
-	```sh
+	```bash
 	pyinstaller Super Mario Construct Mod Manager.spec
 	```
 
