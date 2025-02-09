@@ -25,7 +25,7 @@ Copy and paste the following JSON structure into your `mod.json` file:
 - **Version**: The version of your mod.
 - **Name**: The name of your mod.
 - **GameVersion**: The version of the game your mod is compatible with.
-- **AssetsFolder**: The folder where your mod's assets are stored. It can be anything ("assets/SMC", "assets/files", "files", just make sure that it is defined in this field)
+- **AssetsFolder**: The folder where your mod's assets are stored. It can be anything ("assets/SMC", "assets/files", "files"), just make sure that it is defined in this field)
 - **Description**: A brief description of what your mod does.
 ### Example:
 ```json
@@ -40,7 +40,7 @@ Copy and paste the following JSON structure into your `mod.json` file:
 ```
 
 ## Step 4: Add Your Mod Assets
-Place all the necessary assets for your mod in the folder specified in the `AssetsFolder` field. Double check that the folder structure and file names match what your mod.json defined. You can replace anything so long as it is in the "www" folder of the game, and I mean anything. Sounds, Sprites, Pallates, Tile Maps, anything in there, you can make. You can also add assets, see Touch Controls folder.
+Place all the necessary assets for your mod in the folder specified in the `AssetsFolder` field. Double check that the folder structure and file names match what your mod.json defined. You can replace anything so long as it is in the "www" folder of the game, and I mean anything. Sounds, Sprites, Pallates, Tile Maps, anything in there, you can make. You can also add assets that aren't in the default game, see Touch Controls folder for an example.
 
 ## Step 5: Test Your Mod
 Place your mod in your Mods folder, load it into the game and test it to make sure everything works as intended.
