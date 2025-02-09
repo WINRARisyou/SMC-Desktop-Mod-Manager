@@ -5,6 +5,7 @@ import atexit
 import ctypes
 import json
 import os
+import platform
 import requests
 import shutil
 import subprocess
@@ -16,8 +17,11 @@ from zipfile import ZipFile
 
 global latestGameVersion
 #response = requests.get("https://levelsharesquare.com/api/accesspoint/gameversion/SMC")
-#latestGameVersion = response.json().get("version")
-ctypes.windll.shcore.SetProcessDpiAwareness(2)
+#latestGameVersion = response.json().get("version
+global onWindows
+onWindows = platform.system() == "Windows"
+if onWindows:
+	ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 def restoreGameFiles():
 	for file in modFiles[:]:
@@ -225,7 +229,12 @@ def refreshModsConfig():
 		print("Mods configuration refreshed.")
 
 def runGame(reset=False):
-	gameExecutable = os.path.join(gamePath, "Super Mario Construct.exe")
+	gameExecutable = None
+	if onWindows:
+		gameExecutable = os.path.join(gamePath, "Super Mario Construct.exe")
+	else:
+		gameExecutable = os.path.join(gamePath, "Super Mario Construct")
+		os.chmod(gameExecutable, 0o755)
 	if os.path.exists(gameExecutable):
 		process = subprocess.Popen([gameExecutable], cwd=gamePath)
 		while process.poll() is None:
@@ -233,7 +242,6 @@ def runGame(reset=False):
 			window.after(100)  # Wait for 100ms before checking again
 		if devMode:
 			print("Game exited")
-		if devMode:
 			print("------------------------")
 		restoreGameFiles()
 	else:
