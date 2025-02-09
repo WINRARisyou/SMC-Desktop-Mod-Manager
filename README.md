@@ -1,6 +1,6 @@
 # Super Mario Construct Desktop Mod Manager
 Way to manage replacing game files in Super Mario Construct
-
+# Please report any bugs you find in the [issues tab](https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/issues), and back up your game directory due to any possible aformentioned bugs.
 ## How to Use
 
 1. **Set Game Location**: 
