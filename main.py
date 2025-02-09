@@ -97,7 +97,10 @@ def backupOriginalFile(gameFilesPath, unmodifiedFilePath):
 					modFiles.append(os.path.join(root, name))
 		else:
 			modFiles.append(gameFilesPath)
-	#print(modFiles)
+		# Check if the directory of the game file exists, if not, add it to the nuke list
+		dirPath = os.path.dirname(gameFilesPath)
+		if not os.path.exists(dirPath):
+			modFiles.append(dirPath)
 
 def parseModFolder(modFolder):
 	# Get mod.json

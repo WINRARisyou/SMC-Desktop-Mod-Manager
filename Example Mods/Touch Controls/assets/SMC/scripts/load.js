@@ -1,0 +1,1 @@
+javascript:(function () { var script = document.createElement('script'); script.src="/scripts/smcmobile-LSS.user.js"; document.body.append(script);})();
