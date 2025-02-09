@@ -1,5 +1,4 @@
 # Super Mario Construct Desktop Mod Manager
-
 Way to manage replacing game files in Super Mario Construct
 
 ## How to Use
@@ -7,7 +6,7 @@ Way to manage replacing game files in Super Mario Construct
 1. **Set Game Location**: 
 	- Open the application.
 	- Go to `File` > `Set Game Location`.
-	- Select the folder where `Super Mario Construct.exe` is located.
+	- Select the folder where `Super Mario Construct.exe` is located (`%appdata%\itch\apps\super-mario-construct` if you installed via itch.io app).
 
 2. **Set Mods Folder Location**: 
 	- Go to `File` > `Set Mods Folder Location` (By default, it will be in the same directory as the executable).
@@ -47,3 +46,6 @@ Way to manage replacing game files in Super Mario Construct
 	- After building, the executable will be located in the `dist` folder.
 	- Run the executable to start the mod manager.
 	- You can also run `main.py` to run without building the executable
+
+## Making Mods
+Open [the readme in example mods](Example%20Mods/README.md) to find out how to make some

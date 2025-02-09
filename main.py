@@ -91,6 +91,10 @@ def backupOriginalFile(gameFilesPath, unmodifiedFilePath):
 		if not os.path.isdir(gameFilesPath):
 			modFiles.append(gameFilesPath)
 
+def copyModFile():
+	copyModFiles = filedialog.askopenfiles()
+	print(copyModFiles)
+
 def parseModFolder(modFolder):
 	# Get mod.json
 	modJSONPath = os.path.join(modFolder, "mod.json")
@@ -396,6 +400,7 @@ menuBar.add_cascade(label="File", menu=filesMenuBar)
 # Add commands to the File menu
 filesMenuBar.add_command(label="Set Game Location", command=setGameLocation)
 filesMenuBar.add_command(label="Set Mods Folder Location", command=setModsLocation)
+#filesMenuBar.add_command(label="Add new mod", command=copyModFile)
 filesMenuBar.add_separator()
 filesMenuBar.add_command(label="Exit", command=window.quit)
 
