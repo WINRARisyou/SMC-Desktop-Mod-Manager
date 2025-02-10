@@ -600,7 +600,10 @@ def createModList(sortedMods):
 		for modID, modData in sortedMods:
 			modName = modData.get("Name") # Get the mod name for display
 			checked = "✅ " if modVars[modID].get() else "⬜ "
-			modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')} (Priority: {modData['Priority']})")
+			if devMode:
+				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')} (Priority: {modData['Priority']})")
+			else:
+				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')})")
 
 	# Bind selection event to update mod info label
 	modListbox.bind("<<ListboxSelect>>", onModSelect)
