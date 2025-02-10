@@ -1,8 +1,8 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### DEFS ###
-devMode = True
-managerVersion = "1.0.0"
+devMode = False
+managerVersion = "1.0.1"
 import atexit
 import ctypes
 import json
@@ -345,7 +345,13 @@ def setGameLocation():
 			json.dump(settings, f, indent=4)
 		messagebox.showinfo("Restarting", "SMC Desktop Mod Manager will now restart to apply the changes.")
 		# restart program
-		os.execl(sys.executable, sys.executable, *sys.argv)
+		if getattr(sys, 'frozen', False):
+			executable_path = sys.executable
+			subprocess.Popen([executable_path] + sys.argv)
+		else:
+			executable_path = os.path.abspath(__file__)
+			subprocess.Popen([sys.executable, executable_path] + sys.argv[1:])
+		sys.exit(0)
 	elif not gamePath == "":
 		setGameLocation()
 
@@ -360,7 +366,7 @@ def setModsLocation():
 		settings["ModsLocation"] = modsPath
 		with open("settings.json", "w") as f:
 			json.dump(settings, f, indent=4)
-	else:
+	elif not modsPath == "":
 		setModsLocation()
 
 def startGame():
