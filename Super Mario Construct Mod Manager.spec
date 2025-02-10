@@ -22,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='Super Mario Construct Mod Manager',
+    name='SuperMarioConstructModManager',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
