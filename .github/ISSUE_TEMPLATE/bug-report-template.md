@@ -26,7 +26,7 @@ If applicable, add screenshots to help explain your problem.
 **Device Information:**
 - Device: [e.g. Dell Vostro 470]
  - OS: [e.g. Windows 10]
- - Mod Manager Version [e.g. 1.0.0]
+ - Mod Manager Version: [e.g. 1.0.0]
 
 **Additional context**
 Add any other context about the problem here.
