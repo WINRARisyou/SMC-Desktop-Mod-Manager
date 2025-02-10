@@ -1,8 +1,0 @@
-{
-	"ID": "winrarisyou.touchcontrols",
-	"Version": "1.0.5",
-	"Name": "SMC Touch Controls",
-	"GameVersion": "v8.beta*",
-	"AssetsFolder": "assets/SMC",
-	"Description": "Adds Touch Controls to the desktop version of Super Mario Construct. Version used on LSS, which was modified by The Flying Dutchman."
-}

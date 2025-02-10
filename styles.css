@@ -1,0 +1,105 @@
+@font-face {
+	font-family: "Google Sans";
+	src: url("files/fonts/GoogleSans-Regular.ttf") format("truetype");
+}
+
+html {
+	box-sizing: border-box;
+	margin: 0px;
+	padding: 0px;
+}
+body {
+	font-family: "Google Sans", Arial, sans-serif;
+	line-height: 1.6;
+	background-color: #f4f4f4;
+	color: #333;
+}
+
+code {
+	background-color: #f4f4f4;
+	border: 1px solid #ddd;
+	border-radius: 5px;	
+	padding: 2px 4px;
+}
+
+a {
+	color: #5a5af0;
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+
+header {
+	position: relative;
+	background-color: #333;
+	color: #fff;
+	padding: 10px 0;
+	height: 155px;
+	border-radius: 8px;
+	text-align: left;
+}
+
+footer {
+	background-color: #333;
+	color: #fff;
+	text-align: left;
+	bottom: 0px;
+	width: 100%;
+}
+
+header h1 {
+	position: absolute;
+	z-index: 1;
+	margin-left: 170px;
+	top: 35%;
+	transform: translateY(-50%);
+}
+
+.logo {
+	position: absolute;
+	top: 10.5px;
+	left: 10.5px;
+	border-radius: 8px;
+	border: 2px solid #ddd;
+	width: 150px;
+	height: auto;
+}
+
+.main {
+	padding: 20px 20px 0px 20px;
+}
+
+h1, h2 {
+	color: #5a5af0;
+	padding: 0px;
+}
+
+ul, ol {
+	margin: 0 0 20px 20px;
+}
+
+p {
+	line-height: 1.6;
+}
+
+section {
+	background: #fff;
+	margin: 20px 0;
+	padding: 20px;
+	padding-bottom: 1px;
+	border-radius: 5px;
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+section>h2 {
+	padding: 0px 5px 0px 5px;
+	margin: 0;
+}
+
+small:not(.ignoreSmall) {
+	font-size: 69%; /* hehe nice */
+	color: #777;
+}
