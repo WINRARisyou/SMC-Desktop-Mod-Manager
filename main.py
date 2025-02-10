@@ -1,6 +1,8 @@
-# WINRARisyou was here
+### WINRARisyou was here
+### Give credit if you use this code
 ### DEFS ###
 devMode = False
+managerVersion = "1.0.0"
 import atexit
 import ctypes
 import json
@@ -14,10 +16,22 @@ import tempfile
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from zipfile import ZipFile
+import webbrowser
 
 global latestGameVersion
 #response = requests.get("https://levelsharesquare.com/api/accesspoint/gameversion/SMC")
-#latestGameVersion = response.json().get("version
+#latestGameVersion = response.json().get("version")
+
+response = requests.get("https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/current_version.json", timeout=10)
+
+if response.status_code != 200:
+	latestManagerVersion = "Could not get latest mod manager version"
+else:
+	latestManagerVersion = response.json().get("version")
+
+if latestManagerVersion == None:
+	latestManagerVersion = "Could not get latest mod manager version"
+
 global onWindows
 onWindows = platform.system() == "Windows"
 if onWindows:
@@ -45,8 +59,7 @@ def restoreGameFiles():
 			unmodifiedFilePath = os.path.join(root, file)
 			if os.path.exists(unmodifiedFilePath):
 				shutil.copy2(unmodifiedFilePath, gameFilesPath)
-				if devMode:
-					print(f"Restored {gameFilesPath} from {unmodifiedFilePath}\n")
+				if devMode:	print(f"Restored {gameFilesPath} from {unmodifiedFilePath}\n")
 
 def onExit():
 	# Remove temporary directory
@@ -68,7 +81,11 @@ if os.path.exists("settings.json"):
 		settings = json.load(f)
 else:
 	with open("settings.json", "w") as f:
-		json.dump({"GameLocation": "", "ModsLocation": "Mods"}, f, indent=4)
+		if os.path.exists(os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct") and onWindows:
+			if devMode: print("Super Mario Construct installed via itch.io app")
+			json.dump({"GameLocation": f"{os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct"}", "ModsLocation": "Mods"}, f, indent=4)
+		else:
+			json.dump({"GameLocation": "", "ModsLocation": "Mods"}, f, indent=4)
 	with open("settings.json") as f:
 		settings = json.load(f)
 
@@ -96,9 +113,27 @@ def backupOriginalFile(gameFilesPath, unmodifiedFilePath):
 		if not os.path.isdir(gameFilesPath):
 			modFiles.append(gameFilesPath)
 
+def bringWindowToFront():
+	window.attributes('-topmost', True)
+	window.after(100, lambda: window.focus_set())
+
 def copyModFile():
 	copyModFiles = filedialog.askopenfiles()
-	print(copyModFiles)
+	if copyModFiles:
+		for file in copyModFiles:
+			if file.name.endswith(".zip"):
+				shutil.copy2(file.name, modsPath)
+				if devMode:	print(f"Copied {file.name} to {modsPath}")
+				refreshModsConfig()
+			else:
+				print("Invalid file type. Please select a .zip file.")
+				messagebox.showerror("Error", "Invalid file type. Please select a .zip file.")
+
+def openModFolder():
+	if onWindows:
+		os.startfile(modsPath)
+	else:
+		subprocess.Popen(["xdg-open", modsPath])
 
 def parseModFolder(modFolder):
 	# Get mod.json
@@ -107,12 +142,12 @@ def parseModFolder(modFolder):
 		with open(modJSONPath, "r") as f:
 			modData = json.load(f)
 		modName = modData.get("Name")
-		modID = modData.get("ID")  # Get the mod's ID
+		modID = modData.get("ID") # Get the mod's ID
 		if modName and modID:
 			global allModVersions
 			allModVersions[modName] = modData.get("GameVersion")
 			updateModsConfig(modName, modData, f"{os.path.basename(modFolder)}.zip")
-			if modsConfig.get(modID, {}).get("Enabled", False):  # Use modID to check if enabled
+			if modsConfig.get(modID, {}).get("Enabled", False): # Use modID to check if enabled
 				AssetsFolder = modData.get("AssetsFolder")
 				if AssetsFolder:
 					assetsPath = os.path.join(modFolder, AssetsFolder)
@@ -159,7 +194,7 @@ def processFile(modID, modPriority, root, file, assetsPath):
 	unmodifiedFilePath = os.path.join(temp_dir, "Unmodified Game Files", relativePath)
 	modFilePath = os.path.join(root, file)
 
-	if not os.path.exists(os.path.dirname(gameFilesPath)):  # This means a mod created the directory
+	if not os.path.exists(os.path.dirname(gameFilesPath)): # This means a mod created the directory
 		print(f"Marking {os.path.dirname(gameFilesPath)} for deletion")
 		modFiles.append(os.path.dirname(gameFilesPath))
 
@@ -172,16 +207,14 @@ def processFile(modID, modPriority, root, file, assetsPath):
 	if previousModPriority is None or modPriority < previousModPriority:
 		shutil.copy2(modFilePath, gameFilesPath)
 		modifiedFiles[relativePath] = modPriority
-		if devMode:
-			print(f"{modID} ({modPriority}) replaced {gameFilesPath}")
+		if devMode: print(f"{modID} (Priority: {modPriority}) replaced {gameFilesPath}")
 	else:
-		if devMode:
-			print(f"Skipping {modFilePath} because a higher-priority mod ({previousModPriority}) already modified it.")
+		if devMode:	print(f"Skipping {modFilePath} because a higher-priority mod ({previousModPriority}) already modified it.")
 
 def refreshModsConfig():
 	"""Refresh mods.json by unpacking zip files and reading their mod.json."""
 	global modsConfig
-	modsConfig = {}  # Clear existing modsConfig
+	modsConfig = {} # Clear existing modsConfig
 
 	# Get a list of all mod zip files
 	mod_zips = [item for item in os.listdir(modsPath) if item.endswith(".zip") and os.path.isfile(os.path.join(modsPath, item))]
@@ -191,7 +224,7 @@ def refreshModsConfig():
 
 	# Assign priorities alphabetically (lower alphabetically, higher priority number)
 	for priority, item in enumerate(mod_zips, start=1):
-		modFolderName = item[:-4]  # Remove .zip extension
+		modFolderName = item[:-4] # Remove .zip extension
 		with ZipFile(os.path.join(modsPath, item), "r") as zip:
 			# Extract only mod.json
 			zip.extract("mod.json", path=os.path.join(temp_dir, modFolderName))
@@ -200,12 +233,11 @@ def refreshModsConfig():
 				with open(modJSONPath, "r") as f:
 					modData = json.load(f)
 				modName = modData.get("Name")
-				modID = modData.get("ID")  # Get the mod's ID
+				modID = modData.get("ID") # Get the mod's ID
 				if modName and modID:
-					modData["Priority"] = priority - 1  # Assign priority
+					modData["Priority"] = priority - 1 # Assign priority
 					updateModsConfig(modName, modData, f"{modFolderName}.zip")
-					if devMode:
-						print(f"{modFolderName} extracted and parsed\n")
+					if devMode:	print(f"{modFolderName} extracted and parsed\n")
 
 	# Save the updated modsConfig to mods.json
 	with open(mods_json_path, "w") as f:
@@ -223,13 +255,15 @@ def refreshModsConfig():
 			os.unlink(item_path)
 		elif os.path.isdir(item_path):
 			shutil.rmtree(item_path)
-	os.mkdir(temp_dir + "/Unmodified Game Files")
+	os.mkdir(temp_dir + "/" + "Unmodified Game Files")
 
 	if devMode:
 		print("Mods configuration refreshed.")
 
 def runGame(reset=False):
 	gameExecutable = None
+	global onWindows
+	global refreshButton
 	if onWindows:
 		gameExecutable = os.path.join(gamePath, "Super Mario Construct.exe")
 	else:
@@ -237,13 +271,19 @@ def runGame(reset=False):
 		os.chmod(gameExecutable, 0o755)
 	if os.path.exists(gameExecutable):
 		process = subprocess.Popen([gameExecutable], cwd=gamePath)
+		window.iconify() # Minimize the GUI
+		refreshButton.config(state="disabled")
 		while process.poll() is None:
-			window.update()  # Keep the GUI responsive
-			window.after(100)  # Wait for 100ms before checking again
+			window.update() # Keep the GUI responsive
+			window.after(100) # Wait for 100ms before checking again
 		if devMode:
 			print("Game exited")
 			print("------------------------")
 		restoreGameFiles()
+		bringWindowToFront()
+		window.deiconify()
+		refreshButton.config(state="normal")
+
 	else:
 		print(f"Game executable not found at {gameExecutable}")
 		messagebox.showerror("Error", f"Game executable not found at {gamePath}")
@@ -267,8 +307,7 @@ def saveAndPlay():
 			with ZipFile(modsPath + "/" + item, "r") as zip:
 				zip.extractall(temp_dir + "/" + modFolderName)
 				parseModFolder(temp_dir + "/" + modFolderName)
-				if devMode:
-					print(modFolderName + " extracted and parsed\n")
+				if devMode:	print(modFolderName + " extracted and parsed\n")
 		else:
 			pass
 	#print(allModVersions)
@@ -325,7 +364,7 @@ def startGame():
 
 def updateModsConfig(modName, modData, fileName):
 	"""Update mods.json with new mod data."""
-	modID = modData.get("ID")  # Get the mod's ID from modData
+	modID = modData.get("ID") # Get the mod's ID from modData
 	if modID not in modsConfig:
 		modsConfig[modID] = {}
 	# update mod data
@@ -336,11 +375,10 @@ def updateModsConfig(modName, modData, fileName):
 	modsConfig[modID]["GameAbbreviation"] = modData.get("GameAbbreviation", modsConfig[modID].get("GameAbbreviation", "SMC"))
 	modsConfig[modID]["GameVersion"] = modData.get("GameVersion", modsConfig[modID].get("GameVersion", ""))
 	modsConfig[modID]["Description"] = modData.get("Description", modsConfig[modID].get("Description", ""))
-	modsConfig[modID]["Name"] = modName  # Store the mod name for display purposes
+	modsConfig[modID]["Name"] = modName # Store the mod name for display purposes
 	with open(mods_json_path, "w") as f:
 		json.dump(modsConfig, f, indent=4)
-	if devMode:
-		print(f"Updated {modName} (ID: {modID}) in mods.json")
+	if devMode: print(f"Updated {modName} (ID: {modID}) in mods.json")
 ### /MISC FUNCTIONS ###
 ### MAIN ###
 ## GET PATHS ##
@@ -348,7 +386,7 @@ gamePath = settings.get("GameLocation")
 modsPath = settings.get("ModsLocation")
 
 # Read or create mods.json
-local_appdata_path = os.path.expandvars("%localappdata")
+
 mods_json_path = modsPath + "/mods.json"
 if not os.path.exists(modsPath):
 	os.mkdir(modsPath)
@@ -389,9 +427,9 @@ window = tk.Tk()
 def resource_path(relative_path):
 	""" Get absolute path to resource, works for development and PyInstaller """
 	try:
-		base_path = sys._MEIPASS  # Temp directory for PyInstaller --onefile
+		base_path = sys._MEIPASS # Temp directory for PyInstaller --onefile
 	except AttributeError:
-		base_path = os.path.abspath(".")  # Normal execution
+		base_path = os.path.abspath(".") # Normal execution
 	return os.path.join(base_path, relative_path)
 
 window.iconphoto(True, tk.PhotoImage(file=resource_path("icons/icon-512.png")))
@@ -409,7 +447,11 @@ menuBar.add_cascade(label="File", menu=filesMenuBar)
 # Add commands to the File menu
 filesMenuBar.add_command(label="Set Game Location", command=setGameLocation)
 filesMenuBar.add_command(label="Set Mods Folder Location", command=setModsLocation)
-#filesMenuBar.add_command(label="Add new mod", command=copyModFile)
+if devMode: filesMenuBar.add_command(label="Open Temp Folder", command=lambda: os.startfile(temp_dir))
+filesMenuBar.add_separator()
+filesMenuBar.add_command(label="Refresh Mods", command=refreshModsConfig)
+filesMenuBar.add_command(label="Open Mods folder", command=openModFolder)
+filesMenuBar.add_command(label="Import mod", command=copyModFile)
 filesMenuBar.add_separator()
 filesMenuBar.add_command(label="Exit", command=window.quit)
 
@@ -440,6 +482,7 @@ def createModList(sortedMods):
 	upButton.pack(fill="none", pady=2)
 
 	# refresh button
+	global refreshButton
 	refreshButton = ttk.Button(buttonFrame, text="🔄", width=3, command=refreshModsConfig)
 	refreshButton.pack(fill="none", pady=2)
 
@@ -497,16 +540,14 @@ def createModList(sortedMods):
 				if modID:
 					del modsConfig[modID]
 				else:
-					if devMode:
-						print("Mod not found in mods.json")
+					if devMode:	print("Mod not found in mods.json")
 				with open(mods_json_path, "w") as f:
 					json.dump(modsConfig, f, indent=4)
 				refreshModsConfig()
 				deleteModButton.config(state="disabled")
 			else:
 				messagebox.showerror("Error", "No mod selected.")
-		if devMode:
-			print(f"Deleted {mod}")
+		if devMode:	print(f"Deleted {mod}")
 
 	def moveMod(direction):
 		selected = modListbox.curselection()
@@ -551,13 +592,13 @@ def createModList(sortedMods):
 		if selected:
 			index = selected[0]
 			modID, modData = sortedMods[index]
-			modVars[modID].set(not modVars[modID].get())  # Toggle state
+			modVars[modID].set(not modVars[modID].get()) # Toggle state
 			updateModList()
 
 	def updateModList():
 		modListbox.delete(0, tk.END)
 		for modID, modData in sortedMods:
-			modName = modData.get("Name")  # Get the mod name for display
+			modName = modData.get("Name") # Get the mod name for display
 			checked = "✅ " if modVars[modID].get() else "⬜ "
 			modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')} (Priority: {modData['Priority']})")
 
@@ -593,10 +634,24 @@ createModList(sortedMods)
 ### Find way to get installed game version from www/data.json
 #gameVersionLabel = tk.Label(window, text="")
 #gameVersionLabel.pack(pady=10)
-# WINRARisyou was here
 #gameVersionLabel.config(text=f"Latest Game Version: {latestGameVersion}")
+managerVersionLabel = tk.Label(window, text="")
+managerVersionLabel.pack()
+managerVersionLabel.config(text=f"Mod Manager Version: {managerVersion}")
+
+latestManagerVersionLabel = tk.Label(window, text="")
+latestManagerVersionLabel.pack(pady=0)
+latestManagerVersionLabel.config(text=f"Latest Mod Manager Version: {latestManagerVersion}")
+
+if managerVersion != latestManagerVersion and latestManagerVersion != "Could not get latest mod manager version":
+	def download_update():
+		webbrowser.open("https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/releases/latest")
+	msg = messagebox.askyesno("Update Available", f"An update is available for the mod manager.\nCurrent version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
+	if msg:
+		download_update()
 
 # Run it!!1!
 window.mainloop()
 ## /GUI ##
 ### /MAIN ###
+### WINRARisyou was here

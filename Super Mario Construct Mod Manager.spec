@@ -36,4 +36,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=['icons\\icon-combined.ico'],
+	version='versionFile.txt'
 )
