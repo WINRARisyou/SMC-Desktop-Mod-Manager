@@ -414,7 +414,11 @@ except json.JSONDecodeError as e:
 # Check if SMC exists in the game path
 def validateGameFolder(path):
 	"""Check if SMC exists in the specified path."""
-	if not os.path.exists(path + "/Super Mario Construct.exe"):
+	if not os.path.exists(path + "/Super Mario Construct.exe") and onWindows:
+		print(f"Super Mario Construct not found at {path}!")
+		messagebox.showerror("Error", f"Super Mario Construct not found at {path}!")
+		return False
+	elif not os.path.exists(path + "/Super Mario Construct") and not onWindows:
 		print(f"Super Mario Construct not found at {path}!")
 		messagebox.showerror("Error", f"Super Mario Construct not found at {path}!")
 		return False
