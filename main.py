@@ -1,7 +1,7 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### DEFS ###
-devMode = False
+devMode = True
 managerVersion = "1.0.0"
 import atexit
 import ctypes
@@ -38,6 +38,7 @@ if onWindows:
 	ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 def restoreGameFiles():
+	"""Restores original game files"""
 	for file in modFiles[:]:
 		if os.path.exists(file):
 			print(f"Removing {file}")
@@ -51,7 +52,6 @@ def restoreGameFiles():
 			else:
 				modFiles.remove(file)
 
-	"""Restores original game files"""
 	for root, dirs, files in os.walk(os.path.join(temp_dir, "Unmodified Game Files")):
 		for file in files:
 			relativePath = os.path.relpath(os.path.join(root, file), os.path.join(temp_dir, "Unmodified Game Files"))
@@ -60,6 +60,9 @@ def restoreGameFiles():
 			if os.path.exists(unmodifiedFilePath):
 				shutil.copy2(unmodifiedFilePath, gameFilesPath)
 				if devMode:	print(f"Restored {gameFilesPath} from {unmodifiedFilePath}\n")
+	# Clear modifiedFiles when game is closed. Fixes issue #3
+	global modifiedFiles
+	modifiedFiles = {}
 
 def onExit():
 	# Remove temporary directory
@@ -204,6 +207,7 @@ def processFile(modID, modPriority, root, file, assetsPath):
 
 	# get the previous mod priority
 	previousModPriority = modifiedFiles.get(relativePath, None)
+	print(f"Current mod priority is {modPriority}, previous mod priority is {previousModPriority}")
 	if previousModPriority is None or modPriority < previousModPriority:
 		shutil.copy2(modFilePath, gameFilesPath)
 		modifiedFiles[relativePath] = modPriority
@@ -603,7 +607,7 @@ def createModList(sortedMods):
 			if devMode:
 				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')} (Priority: {modData['Priority']})")
 			else:
-				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')})")
+				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')}")
 
 	# Bind selection event to update mod info label
 	modListbox.bind("<<ListboxSelect>>", onModSelect)
