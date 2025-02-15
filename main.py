@@ -1,8 +1,8 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### DEFS ###
-devMode = False
-managerVersion = "1.0.1"
+devMode = True
+managerVersion = "1.0.2b"
 import atexit
 import ctypes
 import json
@@ -22,47 +22,17 @@ global latestGameVersion
 #response = requests.get("https://levelsharesquare.com/api/accesspoint/gameversion/SMC")
 #latestGameVersion = response.json().get("version")
 
-response = requests.get("https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/current_version.json", timeout=10)
-
-if response.status_code != 200:
-	latestManagerVersion = "Could not get latest mod manager version"
-else:
+try:
+	response = requests.get("https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/current_version.json", timeout=10)
 	latestManagerVersion = response.json().get("version")
-
+except (requests.exceptions.Timeout, requests.exceptions.TooManyRedirects, requests.exceptions.ConnectionError, requests.exceptions.HTTPError,):
+	latestManagerVersion = "Could not get latest mod manager version"
 if latestManagerVersion == None:
 	latestManagerVersion = "Could not get latest mod manager version"
 
 global onWindows
 onWindows = platform.system() == "Windows"
-if onWindows:
-	ctypes.windll.shcore.SetProcessDpiAwareness(2)
-
-def restoreGameFiles():
-	"""Restores original game files"""
-	for file in modFiles[:]:
-		if os.path.exists(file):
-			print(f"Removing {file}")
-			if os.path.isdir(file):
-				shutil.rmtree(file, ignore_errors=True)
-			else:
-				os.remove(file)
-			# remove file from mod files list
-			if os.path.exists(file):
-				print(f"Unable to remove {file}")
-			else:
-				modFiles.remove(file)
-
-	for root, dirs, files in os.walk(os.path.join(temp_dir, "Unmodified Game Files")):
-		for file in files:
-			relativePath = os.path.relpath(os.path.join(root, file), os.path.join(temp_dir, "Unmodified Game Files"))
-			gameFilesPath = os.path.join(gamePath, "www", relativePath)
-			unmodifiedFilePath = os.path.join(root, file)
-			if os.path.exists(unmodifiedFilePath):
-				shutil.copy2(unmodifiedFilePath, gameFilesPath)
-				if devMode:	print(f"Restored {gameFilesPath} from {unmodifiedFilePath}\n")
-	# Clear modifiedFiles when game is closed. Fixes issue #3
-	global modifiedFiles
-	modifiedFiles = {}
+if onWindows: ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 def onExit():
 	# Remove temporary directory
@@ -121,7 +91,7 @@ def bringWindowToFront():
 	window.after(100, lambda: window.focus_set())
 
 def copyModFile():
-	copyModFiles = filedialog.askopenfiles()
+	copyModFiles = filedialog.askopenfiles(title="Please select mod files")
 	if copyModFiles:
 		for file in copyModFiles:
 			if file.name.endswith(".zip"):
@@ -157,18 +127,18 @@ def parseModFolder(modFolder):
 					if os.path.exists(assetsPath):
 						processAssetsFolder(modID, assetsPath)
 					else:
-						print(f"Cannot find assets folder \"{assetsPath}\" for mod \"{modName}\"!")
+						if devMode: print(f"Cannot find assets folder \"{assetsPath}\" for mod \"{modName}\"!")
 						messagebox.showerror("Error", f"Cannot find assets folder \"{assetsPath}\" for mod \"{modName}\"!")
 				else:
-					print("\"AssetsFolder\" not specified in mod.json")
+					if devMode: print("\"AssetsFolder\" not specified in mod.json")
 					messagebox.showerror("Error", f"\"AssetsFolder\" not specified in mod.json")
 			else:
-				print(f"Mod {modName} is not enabled or not specified in mods.json")
+				print(f"Mod {modName} is not enabled in mods.json")
 		else:
-			print(f"\"Name\" or \"ID\" not specified in mod.json")
+			if devMode: print(f"\"Name\" or \"ID\" not specified in mod.json")
 			messagebox.showerror("Error", f"\"Name\" or \"ID\" not specified in mod.json")
 	else:
-		print(f"mod.json not found in {modFolder}")
+		if devMode: print(f"mod.json not found in {modFolder}")
 		messagebox.showerror("Error", f"mod.json not found in {modFolder}")
 
 def processAssetsFolder(modID, assetsPath):
@@ -184,12 +154,12 @@ def processAssetsFolder(modID, assetsPath):
 
 def processFile(modID, modPriority, root, file, assetsPath):
 	"""
-	Process a file in the mod's assets folder.
-	modID: The ID of the mod.
-	modPriority: The mod's priority.
-	root: The root directory of the file.
-	file: The file to process.
-	assetsPath: The path to the mod's assets folder.
+	Process a file in the mod's assets folder.\n
+	:param modID: The ID of the mod.
+	:param modPriority: The mod's priority.
+	:param root: The root directory of the file.
+	:param file: The file to process.
+	:param assetsPath: The path to the mod's assets folder.
 	"""
 	# Get file paths
 	relativePath = os.path.relpath(os.path.join(root, file), assetsPath)
@@ -263,6 +233,33 @@ def refreshModsConfig():
 
 	if devMode:
 		print("Mods configuration refreshed.")
+
+def restoreGameFiles():
+	"""Restores original game files"""
+	for file in modFiles[:]:
+		if os.path.exists(file):
+			print(f"Removing {file}")
+			if os.path.isdir(file):
+				shutil.rmtree(file, ignore_errors=True)
+			else:
+				os.remove(file)
+			# remove file from mod files list
+			if os.path.exists(file):
+				print(f"Unable to remove {file}")
+			else:
+				modFiles.remove(file)
+
+	for root, dirs, files in os.walk(os.path.join(temp_dir, "Unmodified Game Files")):
+		for file in files:
+			relativePath = os.path.relpath(os.path.join(root, file), os.path.join(temp_dir, "Unmodified Game Files"))
+			gameFilesPath = os.path.join(gamePath, "www", relativePath)
+			unmodifiedFilePath = os.path.join(root, file)
+			if os.path.exists(unmodifiedFilePath):
+				shutil.copy2(unmodifiedFilePath, gameFilesPath)
+				if devMode:	print(f"Restored {gameFilesPath} from {unmodifiedFilePath}\n")
+	# Clear modifiedFiles when game is closed. Fixes issue #3
+	global modifiedFiles
+	modifiedFiles = {}
 
 def runGame(reset=False):
 	gameExecutable = None
@@ -338,20 +335,19 @@ def saveAndPlay():
 
 def setGameLocation():
 	"""Saves the game location to settings.json."""
-	gamePath = filedialog.askdirectory()
+	gamePath = filedialog.askdirectory(title="Please select game folder")
 	if gamePath and validateGameFolder(gamePath):
 		settings["GameLocation"] = gamePath
 		with open("settings.json", "w") as f:
 			json.dump(settings, f, indent=4)
-		messagebox.showinfo("Restarting", "SMC Desktop Mod Manager will now restart to apply the changes.")
+		messagebox.showinfo("Restart Pending", "SMC-DMM will now restart to apply the changes.")
 		# restart program
 		if getattr(sys, 'frozen', False):
-			executable_path = sys.executable
-			subprocess.Popen([executable_path] + sys.argv)
+			subprocess.Popen([sys._MEIPASS] + sys.argv)
 		else:
 			executable_path = os.path.abspath(__file__)
 			subprocess.Popen([sys.executable, executable_path] + sys.argv[1:])
-		sys.exit(0)
+		raise SystemExit
 	elif not gamePath == "":
 		setGameLocation()
 
@@ -660,12 +656,41 @@ latestManagerVersionLabel = tk.Label(window, text="")
 latestManagerVersionLabel.pack(pady=0)
 latestManagerVersionLabel.config(text=f"Latest Mod Manager Version: {latestManagerVersion}")
 
-if managerVersion != latestManagerVersion and latestManagerVersion != "Could not get latest mod manager version":
-	def download_update():
+def getLatestVersion():
+	keywordsToIgnore = ["beta", "dev", "pre-release", "alpha", "test", "b", "d", "pre", "a", "t"]
+	for keyword in keywordsToIgnore:
+		if keyword in managerVersion.lower():
+			if devMode: print(f"Keyword: \"{keyword}\" found in version: {managerVersion}, not checking version")
+			return
+	latestVersionInt = int(latestManagerVersion.replace(".", ""))
+	managerVersionInt = int(managerVersion.replace(".", ""))
+	
+	def askMsg():
+		msg = messagebox.askyesno("Update Available", f"An update is available for the mod manager.\nCurrent version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
+		if msg:
+			downloadUpdate()
+	def downloadUpdate():
 		webbrowser.open("https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/releases/latest")
-	msg = messagebox.askyesno("Update Available", f"An update is available for the mod manager.\nCurrent version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
-	if msg:
-		download_update()
+
+	if latestVersionInt > managerVersionInt and len(str(latestVersionInt)) == len(str(managerVersionInt)):
+		if devMode: print("latestVersionInt and managerVersionInt are same length, so we can evaluate as is.")
+		askMsg()
+		return
+	
+	if len(latestManagerVersion.replace(".", "")) > len(managerVersion.replace(".", "")):
+		for i in range(abs(len(latestManagerVersion.replace(".", "")) - len(managerVersion.replace(".", "")))):
+			managerVersionInt = managerVersionInt * 10
+		if devMode: print(f"Current version as integer (when normalized to match latest version's length): {managerVersionInt}")
+
+	elif len(managerVersion.replace(".", "")) > len(latestManagerVersion.replace(".", "")):
+		for i in range(abs(len(latestManagerVersion.replace(".", "")) - len(managerVersion.replace(".", "")))):
+			latestVersionInt = latestVersionInt * 10
+		if devMode: print(f"Latest version as integer (when normalized to match current version's length): {latestVersionInt}")
+
+	if managerVersionInt < latestVersionInt and latestManagerVersion != "Could not get latest mod manager version":
+		askMsg()
+
+getLatestVersion()
 
 # Run it!!1!
 window.mainloop()
