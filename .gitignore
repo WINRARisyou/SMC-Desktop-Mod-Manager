@@ -1,4 +1,5 @@
 Mods/
 build/
 dist/
+tests/
 settings.json

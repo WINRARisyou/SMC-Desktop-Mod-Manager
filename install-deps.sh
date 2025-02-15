@@ -1,9 +1,10 @@
 #!/bin/bash
-echo "Installing required Python modules..."
+echo "Installing required Python modules..." && set -o noexec
 
 pip install atexit
 pip install ctypes
 pip install json
+pip install orjson
 pip install os
 pip install pyinstaller
 pip install requests

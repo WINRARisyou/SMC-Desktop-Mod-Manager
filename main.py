@@ -2,10 +2,12 @@
 ### Give credit if you use this code
 ### DEFS ###
 devMode = True
-managerVersion = "1.0.2b"
+global managerVersion
+managerVersion = "1.0.2_PRE-RELEASE-2"
 import atexit
 import ctypes
 import json
+import orjson
 import os
 import platform
 import requests
@@ -17,18 +19,6 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 from zipfile import ZipFile
 import webbrowser
-
-global latestGameVersion
-#response = requests.get("https://levelsharesquare.com/api/accesspoint/gameversion/SMC")
-#latestGameVersion = response.json().get("version")
-
-try:
-	response = requests.get("https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/current_version.json", timeout=10)
-	latestManagerVersion = response.json().get("version")
-except (requests.exceptions.Timeout, requests.exceptions.TooManyRedirects, requests.exceptions.ConnectionError, requests.exceptions.HTTPError,):
-	latestManagerVersion = "Could not get latest mod manager version"
-if latestManagerVersion == None:
-	latestManagerVersion = "Could not get latest mod manager version"
 
 global onWindows
 onWindows = platform.system() == "Windows"
@@ -44,26 +34,21 @@ def onExit():
 
 atexit.register(onExit)
 temp_dir = tempfile.mkdtemp()
-os.mkdir(temp_dir + "/Unmodified Game Files")
+os.mkdir(os.path.join(temp_dir, "Unmodified Game Files"))
 
 ### /DEFS ###
-### MISC DEFS ###
+### GLOBALS ###
 # Read settings.json
-if os.path.exists("settings.json"):
-	with open("settings.json") as f:
-		settings = json.load(f)
-else:
-	with open("settings.json", "w") as f:
-		if os.path.exists(os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct") and onWindows:
-			if devMode: print("Super Mario Construct installed via itch.io app")
-			json.dump({"GameLocation": f"{os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct"}", "ModsLocation": "Mods"}, f, indent=4)
-		else:
-			json.dump({"GameLocation": "", "ModsLocation": "Mods"}, f, indent=4)
-	with open("settings.json") as f:
-		settings = json.load(f)
-
 global allModVersions
 allModVersions = {}
+global gamePath
+gamePath = None
+global gameVersion
+gameVersion = None
+global latestGameVersion, latestManagerVersion
+latestGameVersion = latestManagerVersion = None
+global modsPath
+modsPath = None
 global modFiles
 modFiles = []
 global modifiedFiles
@@ -72,7 +57,9 @@ global modVars
 modVars = {}
 global SelectedMod
 SelectedMod = None
-### /MISC DEFS ###
+global settings
+settings = None
+### /GLOBALS ###
 ### MISC FUNCTIONS ###
 def backupOriginalFile(gameFilesPath, unmodifiedFilePath):
 	if os.path.exists(gameFilesPath):
@@ -88,7 +75,8 @@ def backupOriginalFile(gameFilesPath, unmodifiedFilePath):
 
 def bringWindowToFront():
 	window.attributes('-topmost', True)
-	window.after(100, lambda: window.focus_set())
+	window.after(10, lambda: window.focus_set())
+	window.after(11, lambda: window.attributes('-topmost', False))
 
 def copyModFile():
 	copyModFiles = filedialog.askopenfiles(title="Please select mod files")
@@ -101,6 +89,21 @@ def copyModFile():
 			else:
 				print("Invalid file type. Please select a .zip file.")
 				messagebox.showerror("Error", "Invalid file type. Please select a .zip file.")
+
+def makeWebRequest(url, timeout, exceptionText):
+	try:
+		response = requests.get(url, timeout=timeout)
+		if response == None:
+			return exceptionText
+		return response
+	except (requests.exceptions.Timeout, requests.exceptions.TooManyRedirects, requests.exceptions.ConnectionError, requests.exceptions.HTTPError,):
+		return exceptionText
+
+def openGameFolder():
+	if onWindows:
+		os.startfile(gamePath)
+	else:
+		subprocess.Popen(["xdg-open", gamePath])
 
 def openModFolder():
 	if onWindows:
@@ -118,7 +121,7 @@ def parseModFolder(modFolder):
 		modID = modData.get("ID") # Get the mod's ID
 		if modName and modID:
 			global allModVersions
-			allModVersions[modName] = modData.get("GameVersion")
+			allModVersions[modID] = modData.get("GameVersion")
 			updateModsConfig(modName, modData, f"{os.path.basename(modFolder)}.zip")
 			if modsConfig.get(modID, {}).get("Enabled", False): # Use modID to check if enabled
 				AssetsFolder = modData.get("AssetsFolder")
@@ -184,6 +187,25 @@ def processFile(modID, modPriority, root, file, assetsPath):
 		if devMode: print(f"{modID} (Priority: {modPriority}) replaced {gameFilesPath}")
 	else:
 		if devMode:	print(f"Skipping {modFilePath} because a higher-priority mod ({previousModPriority}) already modified it.")
+
+def readSettingsJSON():
+	global gamePath, settings, modsPath
+	if os.path.exists("settings.json"):
+		with open("settings.json") as f:
+			settings = json.load(f)
+		gamePath = settings.get("GameLocation")
+		modsPath = settings.get("ModsLocation")
+	else:
+		with open("settings.json", "w") as f:
+			if os.path.exists(os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct") and onWindows:
+				if devMode: print("Super Mario Construct installed via itch.io app")
+				json.dump({"GameLocation": f"{os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct"}", "ModsLocation": "Mods"}, f, indent=4)
+			else:
+				json.dump({"GameLocation": "", "ModsLocation": "Mods"}, f, indent=4)
+		with open("settings.json") as f:
+			settings = json.load(f)
+		gamePath = settings.get("GameLocation")
+		modsPath = settings.get("ModsLocation")
 
 def refreshModsConfig():
 	"""Refresh mods.json by unpacking zip files and reading their mod.json."""
@@ -261,7 +283,7 @@ def restoreGameFiles():
 	global modifiedFiles
 	modifiedFiles = {}
 
-def runGame(reset=False):
+def runGame():
 	gameExecutable = None
 	global onWindows
 	global refreshButton
@@ -311,43 +333,44 @@ def saveAndPlay():
 				if devMode:	print(modFolderName + " extracted and parsed\n")
 		else:
 			pass
-	#print(allModVersions)
-	#for mod in allModVersions:
-	#	if allModVersions[mod] != latestGameVersion and modsConfig[mod]["Enabled"]:
-	#		msg = tk.messagebox.askyesnocancel(title="Possible Mod Incompatability", message=f"Mod \"{mod}\" may not be compatible with the current game version ({latestGameVersion}), as it was built for {allModVersions[mod]}.\nDo you want to disable it?", icon="warning")
-	#		match msg:
-	#			case False:
-	#				break
-	#			case True:
-	#				print('disable')
-	#				restoreGameFiles()
-	#				modsConfig[mod]["Enabled"] = False
-	#				createModList(sortModsByPriority(modsConfig))
-	#				with open(mods_json_path, "w") as f:
-	#					json.dump(modsConfig, f, indent=4)
-	#					parseModFolder(temp_dir + "/" + modFolderName)
-	#					saveAndPlay()
-	#				return
-	#			case _:
-	#				restoreGameFiles()
-	#				return
+	for mod in allModVersions:
+		if allModVersions[mod] != gameVersion and modsConfig[mod]["Enabled"]:
+			if allModVersions[mod].endswith("*"):
+				modVersion = allModVersions[mod][:-1]
+				if gameVersion.startswith(modVersion):
+					print('passes')
+					break
+			msg = tk.messagebox.askyesnocancel(title="Possible Mod Incompatability", message=f"Mod \"{modsConfig[mod]["Name"]}\" may not be compatible with the current game version ({gameVersion}), as it was built for {allModVersions[mod]}.\nDo you want to disable it?", icon="warning")
+			match msg:
+				case False:
+					break
+				case True:
+					print('disable')
+					restoreGameFiles()
+					modsConfig[modID]["Enabled"] = False
+					createModList(sortModsByPriority(modsConfig))
+					with open(mods_json_path, "w") as f:
+						json.dump(modsConfig, f, indent=4)
+						parseModFolder(temp_dir + "/" + modFolderName)
+						saveAndPlay()
+					return
+				case _:
+					restoreGameFiles()
+					return
 	runGame()
 
 def setGameLocation():
+	global gameVersion, gameVersionLabel
 	"""Saves the game location to settings.json."""
-	gamePath = filedialog.askdirectory(title="Please select game folder")
-	if gamePath and validateGameFolder(gamePath):
-		settings["GameLocation"] = gamePath
+	newGamePath = filedialog.askdirectory(title="Please select game folder")
+	if newGamePath and validateGameFolder(newGamePath):
+		settings["GameLocation"] = newGamePath
 		with open("settings.json", "w") as f:
 			json.dump(settings, f, indent=4)
-		messagebox.showinfo("Restart Pending", "SMC-DMM will now restart to apply the changes.")
-		# restart program
-		if getattr(sys, 'frozen', False):
-			subprocess.Popen([sys._MEIPASS] + sys.argv)
-		else:
-			executable_path = os.path.abspath(__file__)
-			subprocess.Popen([sys.executable, executable_path] + sys.argv[1:])
-		raise SystemExit
+		readSettingsJSON()
+		newGamePath = settings.get("GameLocation")
+		gameVersion = getInstalledGameVersion()
+		gameVersionLabel.config(text=f"Installed Game Version: {gameVersion}")
 	elif not gamePath == "":
 		setGameLocation()
 
@@ -362,11 +385,13 @@ def setModsLocation():
 		settings["ModsLocation"] = modsPath
 		with open("settings.json", "w") as f:
 			json.dump(settings, f, indent=4)
+		readSettingsJSON()
+		refreshModsConfig()
 	elif not modsPath == "":
 		setModsLocation()
 
 def startGame():
-	runGame(True)
+	runGame()
 
 def updateModsConfig(modName, modData, fileName):
 	"""Update mods.json with new mod data."""
@@ -385,15 +410,44 @@ def updateModsConfig(modName, modData, fileName):
 	with open(mods_json_path, "w") as f:
 		json.dump(modsConfig, f, indent=4)
 	if devMode: print(f"Updated {modName} (ID: {modID}) in mods.json")
+
+def findGameVer(data):
+	if isinstance(data, list):
+		for i in range(len(data) - 3):  # Ensure valid indexing
+			if data[i] == "LAST_CONTENT_UPDATE" and data[i + 1] == 1 and isinstance(data[i + 2], str):
+				return data[i + 2]  # Skip "1" and get version string
+		# Recursively search nested lists
+		for item in data:
+			if isinstance(item, list):
+				result = findGameVer(item)
+				if result:
+					return result
+	elif isinstance(data, dict):  # If JSON contains objects, check values
+		for value in data.values():
+			result = findGameVer(value)
+			if result:
+				return result
+	return None
+
+def getInstalledGameVersion():
+	dataFile = os.path.join(gamePath, "www/data.json")
+	if os.path.exists(dataFile):
+		try:
+			with open(dataFile, "rb") as f:
+				data = orjson.loads(f.read())
+			return findGameVer(data) or "Unknown Version"
+		except Exception as e:
+			if devMode:	print(f"Error reading game version: {e}")
+			return "Error Reading Version"
+	else:
+		return "Game Version Not Found"
 ### /MISC FUNCTIONS ###
 ### MAIN ###
 ## GET PATHS ##
-gamePath = settings.get("GameLocation")
-modsPath = settings.get("ModsLocation")
+readSettingsJSON()
 
 # Read or create mods.json
-
-mods_json_path = modsPath + "/mods.json"
+mods_json_path = os.path.join(modsPath, "mods.json")
 if not os.path.exists(modsPath):
 	os.mkdir(modsPath)
 if not os.path.exists(mods_json_path) or os.path.getsize(mods_json_path) == 0:
@@ -457,9 +511,11 @@ menuBar.add_cascade(label="File", menu=filesMenuBar)
 # Add commands to the File menu
 filesMenuBar.add_command(label="Set Game Location", command=setGameLocation)
 filesMenuBar.add_command(label="Set Mods Folder Location", command=setModsLocation)
+if devMode: filesMenuBar.add_separator()
 if devMode: filesMenuBar.add_command(label="Open Temp Folder", command=lambda: os.startfile(temp_dir))
 filesMenuBar.add_separator()
 filesMenuBar.add_command(label="Refresh Mods", command=refreshModsConfig)
+filesMenuBar.add_command(label="Open Game folder", command=openGameFolder)
 filesMenuBar.add_command(label="Open Mods folder", command=openModFolder)
 filesMenuBar.add_command(label="Import mod", command=copyModFile)
 filesMenuBar.add_separator()
@@ -643,11 +699,23 @@ modInfoLabel.pack_forget()
 sortedMods = sortModsByPriority(modsConfig)
 createModList(sortedMods)
 
-### TODO
-### Find way to get installed game version from www/data.json
-#gameVersionLabel = tk.Label(window, text="")
-#gameVersionLabel.pack(pady=10)
-#gameVersionLabel.config(text=f"Latest Game Version: {latestGameVersion}")
+gameVersion = getInstalledGameVersion()
+
+latestGameVersion = makeWebRequest("https://levelsharesquare.com/api/accesspoint/gameversion/SMC", 10, "Could not get latest game version")
+if latestGameVersion != "Could not get latest game version": latestGameVersion = latestGameVersion.json().get("version")
+
+latestManagerVersion = makeWebRequest("https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/current_version.json", 10, "Could not get latest mod manager version")
+if latestManagerVersion != "Could not get latest mod manager version": latestManagerVersion = latestManagerVersion.json().get("version")
+
+global gameVersionLabel
+gameVersionLabel = tk.Label(window, text="")
+gameVersionLabel.pack(pady=0)
+gameVersionLabel.config(text=f"Installed Game Version: {gameVersion}")
+
+latestGameVersionLabel = tk.Label(window, text="")
+latestGameVersionLabel.pack(pady=0)
+latestGameVersionLabel.config(text=f"Latest Game Version: {latestGameVersion}")
+
 managerVersionLabel = tk.Label(window, text="")
 managerVersionLabel.pack()
 managerVersionLabel.config(text=f"Mod Manager Version: {managerVersion}")
@@ -657,7 +725,7 @@ latestManagerVersionLabel.pack(pady=0)
 latestManagerVersionLabel.config(text=f"Latest Mod Manager Version: {latestManagerVersion}")
 
 def getLatestVersion():
-	keywordsToIgnore = ["beta", "dev", "pre-release", "alpha", "test", "b", "d", "pre", "a", "t"]
+	keywordsToIgnore = ["beta", "dev", "pre-release", "pre_release", "alpha", "test", "b", "d", "pre", "a", "t"]
 	for keyword in keywordsToIgnore:
 		if keyword in managerVersion.lower():
 			if devMode: print(f"Keyword: \"{keyword}\" found in version: {managerVersion}, not checking version")

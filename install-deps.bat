@@ -4,6 +4,7 @@ echo Installing required Python modules...
 pip install atexit
 pip install ctypes
 pip install json
+pip install orjson
 pip install os
 pip install pyinstaller
 pip install requests
