@@ -28,6 +28,7 @@ Way to manage replacing game files in Super Mario Construct
 1. **Clone the reposity**
 	- You can either run:
 	<br>
+ 
 	```bash
 	git clone https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager
 	```
@@ -42,6 +43,7 @@ Way to manage replacing game files in Super Mario Construct
 	- Open a command prompt and navigate to the project directory.
 	- Execute the following command:
 	<br>
+ 
 	```bash
 	pyinstaller Super Mario Construct Mod Manager.spec
 	```

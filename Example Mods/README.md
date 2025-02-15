@@ -40,13 +40,13 @@ Copy and paste the following JSON structure into your `mod.json` file:
 ```
 
 ## Step 4: Add Your Mod Assets
-Place all the necessary assets for your mod in the folder specified in the `AssetsFolder` field. Double check that the folder structure and file names match what your mod.json defined. You can replace anything so long as it is in the "www" folder of the game, and I mean anything. Sounds, Sprites, Pallates, Tile Maps, anything in there, you can make. You can also add assets that aren't in the default game, see Touch Controls folder for an example.
+Place all the necessary assets for your mod in the folder specified in the `AssetsFolder` field. Double check that the folder structure and file names match what your mod.json defined. You can replace anything so long as it is in the "www" folder of the game, and I mean anything. Sounds, Sprites, Pallates, Tile Maps, anything in there, you can make. You can also add assets that aren't in the default game, see [Touch Controls](https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/blob/main/Example%20Mods/Touch%20Controls/README.md) folder for an example.
 
 ## Step 5: Test Your Mod
 Place your mod in your Mods folder, load it into the game and test it to make sure everything works as intended.
 
 ## Step 6: ZIP your mod
-Use any software that can make .zip files ((WinRAR)[https://www.rarlab.com/], (7-Zip)[https://7-zip.org/], etc.) and zip the files in the root directory of your mod folder, NOT the folder your mod is in.
+Use any software that can make .zip files ([WinRAR](https://www.rarlab.com/), [7-Zip](https://7-zip.org/), etc.) and zip the files in the root directory of your mod folder, NOT the folder your mod is in.
 #### Correct Way
 ![Correct](correct.png)
 #### Incorrect Way
