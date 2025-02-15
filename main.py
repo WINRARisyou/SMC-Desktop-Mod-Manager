@@ -1,9 +1,9 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### DEFS ###
-devMode = True
+devMode = False
 global managerVersion
-managerVersion = "1.0.2_PRE-RELEASE-2"
+managerVersion = "1.0.2"
 import atexit
 import ctypes
 import json
@@ -90,7 +90,13 @@ def copyModFile():
 				print("Invalid file type. Please select a .zip file.")
 				messagebox.showerror("Error", "Invalid file type. Please select a .zip file.")
 
-def makeWebRequest(url, timeout, exceptionText):
+def makeWebRequest(url: str, timeout: int, exceptionText: str):
+	"""
+	Makes a web request to the desired URL.\n
+	:param url: URL of the web request
+	:param timeout: Time in seconds before the request should time out
+	:param exceptionText: Text to return of the request fails
+	"""
 	try:
 		response = requests.get(url, timeout=timeout)
 		if response == None:
@@ -250,8 +256,8 @@ def refreshModsConfig():
 		if os.path.isfile(item_path) or os.path.islink(item_path):
 			os.unlink(item_path)
 		elif os.path.isdir(item_path):
-			shutil.rmtree(item_path)
-	os.mkdir(temp_dir + "/" + "Unmodified Game Files")
+			if not item_path.endswith("Unmodified Game Files"):
+				shutil.rmtree(item_path)
 
 	if devMode:
 		print("Mods configuration refreshed.")
@@ -328,8 +334,8 @@ def saveAndPlay():
 		if item.endswith(".zip") and os.path.isfile(modsPath + "/" + item):
 			modFolderName = item[0:len(item)-4] # chop off .zip
 			with ZipFile(modsPath + "/" + item, "r") as zip:
-				zip.extractall(temp_dir + "/" + modFolderName)
-				parseModFolder(temp_dir + "/" + modFolderName)
+				zip.extractall(os.path.join(temp_dir, modFolderName))
+				parseModFolder(os.path.join(temp_dir, modFolderName))
 				if devMode:	print(modFolderName + " extracted and parsed\n")
 		else:
 			pass
@@ -338,20 +344,18 @@ def saveAndPlay():
 			if allModVersions[mod].endswith("*"):
 				modVersion = allModVersions[mod][:-1]
 				if gameVersion.startswith(modVersion):
-					print('passes')
 					break
 			msg = tk.messagebox.askyesnocancel(title="Possible Mod Incompatability", message=f"Mod \"{modsConfig[mod]["Name"]}\" may not be compatible with the current game version ({gameVersion}), as it was built for {allModVersions[mod]}.\nDo you want to disable it?", icon="warning")
 			match msg:
 				case False:
-					break
+					pass
 				case True:
-					print('disable')
 					restoreGameFiles()
-					modsConfig[modID]["Enabled"] = False
+					modsConfig[mod]["Enabled"] = False
 					createModList(sortModsByPriority(modsConfig))
 					with open(mods_json_path, "w") as f:
 						json.dump(modsConfig, f, indent=4)
-						parseModFolder(temp_dir + "/" + modFolderName)
+						parseModFolder(os.path.join(temp_dir, modFolderName))
 						saveAndPlay()
 					return
 				case _:
@@ -441,6 +445,38 @@ def getInstalledGameVersion():
 			return "Error Reading Version"
 	else:
 		return "Game Version Not Found"
+
+def getLatestVersion():
+	keywordsToIgnore = ["beta", "dev", "pre-release", "pre_release", "alpha", "test", "b", "d", "pre", "a", "t"]
+	for keyword in keywordsToIgnore:
+		if keyword in managerVersion.lower():
+			if devMode: print(f"Keyword: \"{keyword}\" found in version: {managerVersion}, not checking version")
+			return
+	latestVersionInt = int(latestManagerVersion.replace(".", ""))
+	managerVersionInt = int(managerVersion.replace(".", ""))
+	
+	def askMsg():
+		msg = messagebox.askyesno("Update Available", f"An update is available for the mod manager.\nCurrent version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
+		if msg:
+			webbrowser.open("https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/releases/latest")
+
+	if latestVersionInt > managerVersionInt and len(str(latestVersionInt)) == len(str(managerVersionInt)):
+		if devMode: print("latestVersionInt and managerVersionInt are same length, so we can evaluate as is.")
+		askMsg()
+		return
+	
+	if len(latestManagerVersion.replace(".", "")) > len(managerVersion.replace(".", "")):
+		for i in range(abs(len(latestManagerVersion.replace(".", "")) - len(managerVersion.replace(".", "")))):
+			managerVersionInt *= 10
+		if devMode: print(f"Current version as integer (when normalized to match latest version's length): {managerVersionInt}")
+
+	elif len(managerVersion.replace(".", "")) > len(latestManagerVersion.replace(".", "")):
+		for i in range(abs(len(latestManagerVersion.replace(".", "")) - len(managerVersion.replace(".", "")))):
+			latestVersionInt *= 10
+		if devMode: print(f"Latest version as integer (when normalized to match current version's length): {latestVersionInt}")
+
+	if managerVersionInt < latestVersionInt and latestManagerVersion != "Could not get latest mod manager version":
+		askMsg()
 ### /MISC FUNCTIONS ###
 ### MAIN ###
 ## GET PATHS ##
@@ -459,16 +495,16 @@ try:
 except json.JSONDecodeError as e:
 	print(f"Error reading mods.json: {e}")
 	modsConfig = {}
-	messagebox.showerror("Error", f"Error reading mods.json: {e}")
+	messagebox.showerror("Error", f"Error reading mods.json: {e}\nTry deleting mods.json and see if the error persists.")
 
 # Check if SMC exists in the game path
 def validateGameFolder(path):
 	"""Check if SMC exists in the specified path."""
-	if not os.path.exists(path + "/Super Mario Construct.exe") and onWindows:
+	if not os.path.exists(os.path.join(path, "Super Mario Construct.exe")) and onWindows:
 		print(f"Super Mario Construct not found at {path}!")
 		messagebox.showerror("Error", f"Super Mario Construct not found at {path}!")
 		return False
-	elif not os.path.exists(path + "/Super Mario Construct") and not onWindows:
+	elif not os.path.exists(os.path.join(path, "Super Mario Construct")) and not onWindows:
 		print(f"Super Mario Construct not found at {path}!")
 		messagebox.showerror("Error", f"Super Mario Construct not found at {path}!")
 		return False
@@ -701,62 +737,27 @@ createModList(sortedMods)
 
 gameVersion = getInstalledGameVersion()
 
-latestGameVersion = makeWebRequest("https://levelsharesquare.com/api/accesspoint/gameversion/SMC", 10, "Could not get latest game version")
-if latestGameVersion != "Could not get latest game version": latestGameVersion = latestGameVersion.json().get("version")
+latestGameVersion = makeWebRequest("https://levelsharesquare.com/api/accesspoint/gameversion/SMC", 5, "Could not get latest game version")
+if type(latestGameVersion) != str: latestGameVersion = latestGameVersion.json().get("version")
 
 latestManagerVersion = makeWebRequest("https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/current_version.json", 10, "Could not get latest mod manager version")
-if latestManagerVersion != "Could not get latest mod manager version": latestManagerVersion = latestManagerVersion.json().get("version")
+if type(latestManagerVersion) != str: latestManagerVersion = latestManagerVersion.json().get("version")
 
 global gameVersionLabel
-gameVersionLabel = tk.Label(window, text="")
-gameVersionLabel.pack(pady=0)
-gameVersionLabel.config(text=f"Installed Game Version: {gameVersion}")
+gameFrame = tk.Frame(window)
+gameFrame.pack(side="left", padx=5, pady=0)
+gameVersionLabel = tk.Label(gameFrame, text=f"Installed Game Version: {gameVersion}")
+gameVersionLabel.pack(pady=0, anchor="w")
+latestGameVersionLabel = tk.Label(gameFrame, text=f"Latest Game Version: {latestGameVersion}")
+latestGameVersionLabel.pack(pady=0, anchor="w")
 
-latestGameVersionLabel = tk.Label(window, text="")
-latestGameVersionLabel.pack(pady=0)
-latestGameVersionLabel.config(text=f"Latest Game Version: {latestGameVersion}")
 
-managerVersionLabel = tk.Label(window, text="")
-managerVersionLabel.pack()
-managerVersionLabel.config(text=f"Mod Manager Version: {managerVersion}")
-
-latestManagerVersionLabel = tk.Label(window, text="")
-latestManagerVersionLabel.pack(pady=0)
-latestManagerVersionLabel.config(text=f"Latest Mod Manager Version: {latestManagerVersion}")
-
-def getLatestVersion():
-	keywordsToIgnore = ["beta", "dev", "pre-release", "pre_release", "alpha", "test", "b", "d", "pre", "a", "t"]
-	for keyword in keywordsToIgnore:
-		if keyword in managerVersion.lower():
-			if devMode: print(f"Keyword: \"{keyword}\" found in version: {managerVersion}, not checking version")
-			return
-	latestVersionInt = int(latestManagerVersion.replace(".", ""))
-	managerVersionInt = int(managerVersion.replace(".", ""))
-	
-	def askMsg():
-		msg = messagebox.askyesno("Update Available", f"An update is available for the mod manager.\nCurrent version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
-		if msg:
-			downloadUpdate()
-	def downloadUpdate():
-		webbrowser.open("https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/releases/latest")
-
-	if latestVersionInt > managerVersionInt and len(str(latestVersionInt)) == len(str(managerVersionInt)):
-		if devMode: print("latestVersionInt and managerVersionInt are same length, so we can evaluate as is.")
-		askMsg()
-		return
-	
-	if len(latestManagerVersion.replace(".", "")) > len(managerVersion.replace(".", "")):
-		for i in range(abs(len(latestManagerVersion.replace(".", "")) - len(managerVersion.replace(".", "")))):
-			managerVersionInt = managerVersionInt * 10
-		if devMode: print(f"Current version as integer (when normalized to match latest version's length): {managerVersionInt}")
-
-	elif len(managerVersion.replace(".", "")) > len(latestManagerVersion.replace(".", "")):
-		for i in range(abs(len(latestManagerVersion.replace(".", "")) - len(managerVersion.replace(".", "")))):
-			latestVersionInt = latestVersionInt * 10
-		if devMode: print(f"Latest version as integer (when normalized to match current version's length): {latestVersionInt}")
-
-	if managerVersionInt < latestVersionInt and latestManagerVersion != "Could not get latest mod manager version":
-		askMsg()
+managerFrame = tk.Frame(window)
+managerFrame.pack(side="right", padx=5, pady=0)
+managerVersionLabel = tk.Label(managerFrame, text=f"Mod Manager Version: {managerVersion}")
+managerVersionLabel.pack(pady=0, anchor="e")
+latestManagerVersionLabel = tk.Label(managerFrame, text=f"Latest Mod Manager Version: {latestManagerVersion}")
+latestManagerVersionLabel.pack(pady=0, anchor="e")
 
 getLatestVersion()
 

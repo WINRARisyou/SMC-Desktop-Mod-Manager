@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "Installing required Python modules..." && set -o noexec
+echo "Installing required Python modules..."
 
 pip install atexit
 pip install ctypes
