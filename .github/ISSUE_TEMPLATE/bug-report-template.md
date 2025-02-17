@@ -1,7 +1,7 @@
 ---
 name: Bug report template
 about: Create a report to help me improve SMC DMM
-title: "[BUG NAME] - [MOD MANAGER VERSION]"
+title: "[BUG NAME] - [MOD MANAGER VERSION(S)]"
 labels: bug
 assignees: WINRARisyou
 
