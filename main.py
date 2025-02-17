@@ -1,9 +1,9 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### DEFS ###
-devMode = False
+devMode = True
 global managerVersion
-managerVersion = "1.0.2"
+managerVersion = "1.0.2.1"
 import atexit
 import ctypes
 import json
@@ -220,9 +220,28 @@ def refreshModsConfig():
 
 	# Get a list of all mod zip files
 	mod_zips = [item for item in os.listdir(modsPath) if item.endswith(".zip") and os.path.isfile(os.path.join(modsPath, item))]
-
+	potential_mod_folders = [item for item in os.listdir(modsPath) if os.path.isdir(os.path.join(modsPath, item))]
+	print(potential_mod_folders)
 	# Sort mods alphabetically
 	mod_zips.sort()
+	
+	# Assign priorities alphabetically (lower alphabetically, higher priority number)
+	for priority, item in enumerate(potential_mod_folders, start=1):
+		modFolderName = item
+		print(modFolderName)
+		if not os.path.exists(os.path.join(modsPath, modFolderName, "mod.json")):
+			print("Not a folder mod")
+		else:
+			print("Mod found in folder!")
+			modJSONPath = os.path.join(modsPath, modFolderName, "mod.json")
+			with open(modJSONPath, "r") as f:
+				modData = json.load(f)
+			modName = modData.get("Name")
+			modID = modData.get("ID") # Get the mod's ID
+			if modName and modID:
+				modData["Priority"] = priority - 1 # Assign priority
+				updateModsConfig(modName, modData, f"{modsPath}/{modFolderName}")
+				if devMode:	print(f"Folder \"{modFolderName}\" parsed\n")
 
 	# Assign priorities alphabetically (lower alphabetically, higher priority number)
 	for priority, item in enumerate(mod_zips, start=1):
@@ -375,7 +394,7 @@ def setGameLocation():
 		newGamePath = settings.get("GameLocation")
 		gameVersion = getInstalledGameVersion()
 		gameVersionLabel.config(text=f"Installed Game Version: {gameVersion}")
-	elif not gamePath == "":
+	elif not newGamePath == "":
 		setGameLocation()
 
 def sortModsByPriority(modsConfig):
@@ -403,7 +422,11 @@ def updateModsConfig(modName, modData, fileName):
 	if modID not in modsConfig:
 		modsConfig[modID] = {}
 	# update mod data
-	modsConfig[modID]["FileName"] = fileName
+	if not fileName.endswith("zip"):
+		print("Folder Mod")
+		modsConfig[modID]["FolderPath"] = fileName
+	else:
+		modsConfig[modID]["FileName"] = fileName
 	modsConfig[modID]["Enabled"] = modData.get("Enabled", modsConfig[modID].get("Enabled", False))
 	modsConfig[modID]["Priority"] = modData.get("Priority", modsConfig[modID].get("Priority", 0))
 	modsConfig[modID]["Version"] = modData.get("Version", modsConfig[modID].get("Version", "1.0"))
@@ -416,21 +439,31 @@ def updateModsConfig(modName, modData, fileName):
 	if devMode: print(f"Updated {modName} (ID: {modID}) in mods.json")
 
 def findGameVer(data):
+	lastNearestIndex = -1 # Track the last occurrence of "nearest"
+
 	if isinstance(data, list):
-		for i in range(len(data) - 3):  # Ensure valid indexing
-			if data[i] == "LAST_CONTENT_UPDATE" and data[i + 1] == 1 and isinstance(data[i + 2], str):
-				return data[i + 2]  # Skip "1" and get version string
+		for i in range(len(data) - 2): # Ensure we don't go out of bounds
+			if data[i] == "nearest":
+				lastNearestIndex = i # Update the last found index
+
+		# If we found "nearest", return the value after the next item
+		if lastNearestIndex != -1 and lastNearestIndex + 2 < len(data):
+			if isinstance(data[lastNearestIndex + 2], str):
+				return data[lastNearestIndex + 2]
+
 		# Recursively search nested lists
 		for item in data:
 			if isinstance(item, list):
 				result = findGameVer(item)
 				if result:
 					return result
-	elif isinstance(data, dict):  # If JSON contains objects, check values
+
+	elif isinstance(data, dict):
 		for value in data.values():
 			result = findGameVer(value)
 			if result:
 				return result
+
 	return None
 
 def getInstalledGameVersion():
@@ -439,7 +472,7 @@ def getInstalledGameVersion():
 		try:
 			with open(dataFile, "rb") as f:
 				data = orjson.loads(f.read())
-			return findGameVer(data) or "Unknown Version"
+			return findGameVer(data) or "Unknown"
 		except Exception as e:
 			if devMode:	print(f"Error reading game version: {e}")
 			return "Error Reading Version"
