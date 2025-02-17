@@ -1,7 +1,7 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### DEFS ###
-devMode = True
+devMode = False#True
 global managerVersion
 managerVersion = "1.0.2.1"
 import atexit
@@ -63,7 +63,7 @@ settings = None
 ### MISC FUNCTIONS ###
 def backupOriginalFile(gameFilesPath, unmodifiedFilePath):
 	if os.path.exists(gameFilesPath):
-		print(f"Backing up {gameFilesPath} to {unmodifiedFilePath}")
+		if devMode: print(f"Backing up {gameFilesPath} to {unmodifiedFilePath}")
 		os.makedirs(os.path.dirname(unmodifiedFilePath), exist_ok=True)
 		if not os.path.exists(unmodifiedFilePath):
 			shutil.copy(gameFilesPath, unmodifiedFilePath)
@@ -128,7 +128,6 @@ def parseModFolder(modFolder):
 		if modName and modID:
 			global allModVersions
 			allModVersions[modID] = modData.get("GameVersion")
-			updateModsConfig(modName, modData, f"{os.path.basename(modFolder)}.zip")
 			if modsConfig.get(modID, {}).get("Enabled", False): # Use modID to check if enabled
 				AssetsFolder = modData.get("AssetsFolder")
 				if AssetsFolder:
@@ -186,7 +185,7 @@ def processFile(modID, modPriority, root, file, assetsPath):
 
 	# get the previous mod priority
 	previousModPriority = modifiedFiles.get(relativePath, None)
-	print(f"Current mod priority is {modPriority}, previous mod priority is {previousModPriority}")
+	if devMode: print(f"Current mod priority is {modPriority}, previous mod priority is {previousModPriority}")
 	if previousModPriority is None or modPriority < previousModPriority:
 		shutil.copy2(modFilePath, gameFilesPath)
 		modifiedFiles[relativePath] = modPriority
@@ -346,18 +345,27 @@ def saveAndPlay():
 	with open(mods_json_path, "w") as f:
 		json.dump(modsConfig, f, indent=4)
 
-	for item in os.listdir(modsPath):
+	for item in modsConfig:
 		if not item:
 			print("No items found!")
-			messagebox.showerror("Error", "No items found!")
-		if item.endswith(".zip") and os.path.isfile(modsPath + "/" + item):
-			modFolderName = item[0:len(item)-4] # chop off .zip
-			with ZipFile(modsPath + "/" + item, "r") as zip:
-				zip.extractall(os.path.join(temp_dir, modFolderName))
-				parseModFolder(os.path.join(temp_dir, modFolderName))
-				if devMode:	print(modFolderName + " extracted and parsed\n")
-		else:
-			pass
+			messagebox.showerror("Error", "No mods found!")
+		if modsConfig[item]["Enabled"]:
+			if "FileName" in modsConfig[item]:
+				print(modsConfig[item]["FileName"])
+				if modsConfig[item]["FileName"].endswith(".zip") and os.path.isfile(os.path.join(modsPath, modsConfig[item]["FileName"])):
+					modFolderName = modsConfig[item]["FileName"][0:len(item)-4] # chop off .zip
+					print(modFolderName)
+					with ZipFile(os.path.join(modsPath, modsConfig[item]["FileName"]), "r") as zip:
+						zip.extractall(os.path.join(temp_dir, modFolderName))
+						parseModFolder(os.path.join(temp_dir, modFolderName))
+						if devMode:	print(modFolderName + " extracted and parsed\n")
+			elif "FolderPath" in modsConfig[item]:
+				modFolderPath = modsConfig[item]["FolderPath"]
+				if devMode: print(modFolderPath)
+				parseModFolder(os.path.join(modFolderPath))
+				if devMode:	print(modFolderPath + " extracted and parsed\n")
+			else:
+				pass
 	for mod in allModVersions:
 		if allModVersions[mod] != gameVersion and modsConfig[mod]["Enabled"]:
 			if allModVersions[mod].endswith("*"):
@@ -423,7 +431,6 @@ def updateModsConfig(modName, modData, fileName):
 		modsConfig[modID] = {}
 	# update mod data
 	if not fileName.endswith("zip"):
-		print("Folder Mod")
 		modsConfig[modID]["FolderPath"] = fileName
 	else:
 		modsConfig[modID]["FileName"] = fileName
@@ -485,6 +492,8 @@ def getLatestVersion():
 		if keyword in managerVersion.lower():
 			if devMode: print(f"Keyword: \"{keyword}\" found in version: {managerVersion}, not checking version")
 			return
+	if latestManagerVersion == "Could not get latest mod manager version":
+		return
 	latestVersionInt = int(latestManagerVersion.replace(".", ""))
 	managerVersionInt = int(managerVersion.replace(".", ""))
 	
@@ -663,15 +672,23 @@ def createModList(sortedMods):
 	global modVars
 	modVars = {modID: tk.BooleanVar(value=modData.get("Enabled", False)) for modID, modData in sortedMods}
 	def deleteMod(mod):
+		print(mod)
+		print(SelectedMod)
 		modID = None
 		for id, data in modsConfig.items():
 			if data.get("FileName") == mod:
 				modID = id
 				break
+			if data.get("FolderPath") == mod:
+				modID = id
+				break
 		warning = messagebox.askokcancel("Warning", f"Are you sure you want to delete \"{modsConfig[modID].get('Name')}\"?\nIt will be removed from your system, and you will have to redownload it.", icon="warning")
 		if warning:
 			if mod:
-				os.remove(os.path.join(modsPath, mod))
+				if os.path.isdir(os.path.join(modsPath, mod)):
+					shutil.rmtree(os.path.join(modsPath, mod))
+				else:
+					os.remove(os.path.join(modsPath, mod))
 				if modID:
 					del modsConfig[modID]
 				else:
@@ -679,7 +696,8 @@ def createModList(sortedMods):
 				with open(mods_json_path, "w") as f:
 					json.dump(modsConfig, f, indent=4)
 				refreshModsConfig()
-				deleteModButton.config(state="disabled")
+				if deleteModButton.winfo_exists():
+					deleteModButton.config(state="disabled")
 			else:
 				messagebox.showerror("Error", "No mod selected.")
 		if devMode:	print(f"Deleted {mod}")
@@ -715,7 +733,10 @@ def createModList(sortedMods):
 			deleteModButton.config(state="normal")
 			index = selected[0]
 			modID, modData = sortedMods[index]
-			SelectedMod = sortedMods[index][1].get("FileName")
+			if sortedMods[index][1].get("FileName") != None:
+				SelectedMod = sortedMods[index][1].get("FileName")
+			else:
+				SelectedMod = sortedMods[index][1].get("FolderPath")
 			description = modData.get("Description", "No description available.")
 			if description == "":
 				description = "No description available."
