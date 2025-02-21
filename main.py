@@ -1,7 +1,7 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### DEFS ###
-devMode = False#True
+devMode = False
 global managerVersion
 managerVersion = "1.0.2.1"
 import atexit
@@ -220,18 +220,17 @@ def refreshModsConfig():
 	# Get a list of all mod zip files
 	mod_zips = [item for item in os.listdir(modsPath) if item.endswith(".zip") and os.path.isfile(os.path.join(modsPath, item))]
 	potential_mod_folders = [item for item in os.listdir(modsPath) if os.path.isdir(os.path.join(modsPath, item))]
-	print(potential_mod_folders)
 	# Sort mods alphabetically
 	mod_zips.sort()
 	
 	# Assign priorities alphabetically (lower alphabetically, higher priority number)
 	for priority, item in enumerate(potential_mod_folders, start=1):
 		modFolderName = item
-		print(modFolderName)
+
 		if not os.path.exists(os.path.join(modsPath, modFolderName, "mod.json")):
-			print("Not a folder mod")
+			if devMode: print("Not a folder mod")
 		else:
-			print("Mod found in folder!")
+			if devMode: print("Mod found in folder!")
 			modJSONPath = os.path.join(modsPath, modFolderName, "mod.json")
 			with open(modJSONPath, "r") as f:
 				modData = json.load(f)
@@ -674,6 +673,7 @@ def createModList(sortedMods):
 	def deleteMod(mod):
 		print(mod)
 		print(SelectedMod)
+		print(mod and modsPath in os.path.join(modsPath, mod))
 		modID = None
 		for id, data in modsConfig.items():
 			if data.get("FileName") == mod:
@@ -686,7 +686,11 @@ def createModList(sortedMods):
 		if warning:
 			if mod:
 				if os.path.isdir(os.path.join(modsPath, mod)):
-					shutil.rmtree(os.path.join(modsPath, mod))
+					if not mod and modsPath in os.path.join(modsPath, mod):
+						messagebox.showerror("Error", "Invalid mod path. Mod not removed.")
+					else:
+						pass
+						#shutil.rmtree(os.path.join(modsPath, mod))
 				else:
 					os.remove(os.path.join(modsPath, mod))
 				if modID:

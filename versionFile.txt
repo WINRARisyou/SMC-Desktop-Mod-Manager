@@ -4,8 +4,8 @@
 # http://msdn.microsoft.com/en-us/library/ms646997.aspx
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 0, 2, 0),
-    prodvers=(1, 0, 2, 0),
+    filevers=(1, 0, 2, 1),
+    prodvers=(1, 0, 2, 1),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -21,12 +21,12 @@ VSVersionInfo(
           [
             StringStruct('CompanyName', 'WINRARisyou'),
             StringStruct('FileDescription', 'Super Mario Construct Desktop Mod Manager'),
-            StringStruct('FileVersion', '1.0.2'),
+            StringStruct('FileVersion', '1.0.2.1'),
             StringStruct('InternalName', 'SMCModManager'),
             StringStruct('LegalCopyright', '© WINRARisyou. All rights reserved.'),
             StringStruct('OriginalFilename', 'SuperMarioConstructModManager.exe'),
             StringStruct('ProductName', 'Super Mario Construct Desktop Mod Manager'),
-            StringStruct('ProductVersion', '1.0.2')
+            StringStruct('ProductVersion', '1.0.2.1')
           ])
       ]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
