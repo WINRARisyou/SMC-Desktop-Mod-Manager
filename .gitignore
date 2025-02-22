@@ -3,3 +3,4 @@ build/
 dist/
 tests/
 settings.json
+__pycache__
