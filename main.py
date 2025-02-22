@@ -1,14 +1,15 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### DEFS ###
-devMode = False
+devMode = True
 global managerVersion
-managerVersion = "1.0.2.1"
+managerVersion = "1.0.3a"
 import atexit
 import ctypes
 import json
 import orjson
 import os
+from PIL import Image, ImageTk
 import platform
 import requests
 import shutil
@@ -17,6 +18,7 @@ import sys
 import tempfile
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+from tkinterdnd2 import DND_FILES, TkinterDnD
 from zipfile import ZipFile
 import webbrowser
 
@@ -35,7 +37,6 @@ def onExit():
 atexit.register(onExit)
 temp_dir = tempfile.mkdtemp()
 os.mkdir(os.path.join(temp_dir, "Unmodified Game Files"))
-
 ### /DEFS ###
 ### GLOBALS ###
 # Read settings.json
@@ -47,6 +48,8 @@ global gameVersion
 gameVersion = None
 global latestGameVersion, latestManagerVersion
 latestGameVersion = latestManagerVersion = None
+global mods_json_path
+mods_json_path = None
 global modsPath
 modsPath = None
 global modFiles
@@ -89,6 +92,95 @@ def copyModFile():
 			else:
 				print("Invalid file type. Please select a .zip file.")
 				messagebox.showerror("Error", "Invalid file type. Please select a .zip file.")
+
+def createAboutWindow():
+	about = tk.Toplevel(window)  # Create a sub-window
+	about.iconphoto(True, tk.PhotoImage(file=resource_path("icons/icon-512.png")))
+	about.title("About")
+	about.geometry("640x700")
+	about.resizable(False, False)
+	banner_image = Image.open(resource_path("images/banner2.png"))  # Open the image file
+	scaling_factor = getScalingFactor()
+	new_width = int(640 * scaling_factor)  # Adjust width for DPI scaling
+	original_width, original_height = banner_image.size
+	new_height = int((new_width / original_width) * original_height)  # Maintain aspect ratio
+	banner_image = banner_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+	banner_photo = ImageTk.PhotoImage(banner_image)  # Convert to a format tkinter can use
+
+	# Display the image in a Label
+	banner_label = tk.Label(about, image=banner_photo)
+	banner_label.image = banner_photo  # Keep a reference to avoid garbage collection
+	banner_label.pack(pady=0)
+	info = tk.Label(about, wraplength=int(480 * scaling_factor), text="SMC Desktop Mod Manager is a user-friendly tool designed to simplify modding for Super Mario Construct. You can easily manage, install, and organize your mods with just a few clicks, the Mod Manager takes the hassle out of file management, letting you focus on customizing your gameplay.")
+	info.pack(pady=10)
+
+
+	creditsFrame = tk.Frame(about)
+	creditsFrame.pack(pady=0)
+	creditsFrame.config(background="#1e1e1e")
+	creditsLabel = tk.Label(creditsFrame, text="Credits:\nTODO")
+	creditsLabel.pack(pady=0)
+
+def downloadFile(url, filename):
+	"""Download a file from a URL and save it to the specified directory."""
+	response = requests.get(url, stream=True)
+	if devMode: print(url)
+	if response.status_code == 200:
+		file_path = os.path.join(onlineDownloadDir, filename)
+		with open(file_path, 'wb') as file:
+			for chunk in response.iter_content(chunk_size=8192):
+				file.write(chunk)
+		if devMode: print(f"Downloaded: {filename}")
+	else:
+		if devMode: print(f"Failed to download: {filename} (Status Code: {response.status_code})")
+
+def loadMods():
+	"""Fetch the JSON file, parse it, and download the mods."""
+	try:
+		# response = requests.get(json_url)
+		# response.raise_for_status()  # Raise an error for bad status codes
+		# data = response.json()
+		with open(json_file_path, 'r') as file:
+			data = json.load(file)
+
+		# Get the base assets URL
+		assets_url = data.get("assetsURL", "")
+		if not assets_url:
+			print("Error: 'assetsURL' not found in JSON.")
+			return
+
+		# Iterate through the mods and download them
+		for mod_id, modData in data.items():
+			if mod_id == "assetsURL":
+				continue  # Skip the assetsURL entry
+
+			file_name = modData.get("FileName", "")
+			mod_version = modData.get("Version", "1.0")
+			mod_game_version = modData.get("GameVersion", "")
+			mod_description = modData.get("Description", "")
+			if not file_name:
+				print(f"Skipping mod {mod_id}: No \"FileName\" specified.")
+				continue
+
+			if assets_url.endswith("/"):
+				file_url = f"{assets_url}{file_name}"
+			else:
+				file_url = f"{assets_url}/{file_name}"
+			
+			print("------------------------")
+			print(f"File URL: {file_url}")
+			print(f"File Name: {file_name}")
+			print(f"Mod Version: {mod_id}")
+			print(f"Mod Version: {mod_version}")
+			print(f"Mod Game Version: {mod_game_version}")
+			print(f"Mod Description: {mod_description}")
+			print("------------------------")
+			#downloadFile(file_url, file_name)
+
+	except requests.exceptions.RequestException as e:
+		print(f"Error fetching JSON: {e}")
+	except json.JSONDecodeError as e:
+		print(f"Error parsing JSON: {e}")
 
 def makeWebRequest(url: str, timeout: int, exceptionText: str):
 	"""
@@ -194,12 +286,13 @@ def processFile(modID, modPriority, root, file, assetsPath):
 		if devMode:	print(f"Skipping {modFilePath} because a higher-priority mod ({previousModPriority}) already modified it.")
 
 def readSettingsJSON():
-	global gamePath, settings, modsPath
+	global gamePath, settings, mods_json_path, modsPath
 	if os.path.exists("settings.json"):
 		with open("settings.json") as f:
 			settings = json.load(f)
 		gamePath = settings.get("GameLocation")
 		modsPath = settings.get("ModsLocation")
+		mods_json_path = os.path.join(modsPath, "mods.json")
 	else:
 		with open("settings.json", "w") as f:
 			if os.path.exists(os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct") and onWindows:
@@ -211,6 +304,7 @@ def readSettingsJSON():
 			settings = json.load(f)
 		gamePath = settings.get("GameLocation")
 		modsPath = settings.get("ModsLocation")
+		mods_json_path = os.path.join(modsPath, "mods.json")
 
 def refreshModsConfig():
 	"""Refresh mods.json by unpacking zip files and reading their mod.json."""
@@ -410,14 +504,14 @@ def sortModsByPriority(modsConfig):
 
 def setModsLocation():
 	"""Saves the mods folder location to settings.json."""
-	modsPath = filedialog.askdirectory()
-	if modsPath and validateModsFolder(modsPath):
-		settings["ModsLocation"] = modsPath
+	newModsPath = filedialog.askdirectory()
+	if newModsPath and validateModsFolder(newModsPath):
+		settings["ModsLocation"] = newModsPath
 		with open("settings.json", "w") as f:
 			json.dump(settings, f, indent=4)
 		readSettingsJSON()
 		refreshModsConfig()
-	elif not modsPath == "":
+	elif not newModsPath == "":
 		setModsLocation()
 
 def startGame():
@@ -441,6 +535,7 @@ def updateModsConfig(modName, modData, fileName):
 	modsConfig[modID]["Description"] = modData.get("Description", modsConfig[modID].get("Description", ""))
 	modsConfig[modID]["Name"] = modName # Store the mod name for display purposes
 	with open(mods_json_path, "w") as f:
+		print(mods_json_path)
 		json.dump(modsConfig, f, indent=4)
 	if devMode: print(f"Updated {modName} (ID: {modID}) in mods.json")
 
@@ -518,6 +613,44 @@ def getLatestVersion():
 
 	if managerVersionInt < latestVersionInt and latestManagerVersion != "Could not get latest mod manager version":
 		askMsg()
+
+def getScalingFactor():
+	"""Get the system's DPI scaling factor."""
+	root = tk.Tk()
+	root.tk.call('tk', 'scaling')  # Get the default scaling factor
+	scaling_factor = root.tk.call('tk', 'scaling') / 1.5
+	root.destroy()
+	return scaling_factor
+
+def handleDrop(event):
+	files = window.tk.splitlist(event.data)
+	for file in files:
+		if os.path.isfile(file) and file.endswith('.zip'):
+			# handle zip file drop
+			if os.path.exists(os.path.join(modsPath, os.path.basename(file))):
+				overwrite = messagebox.askyesno("Overwrite Mod", f"The mod you are trying to import already exists. Do you want to overwrite it?")
+				if overwrite:
+					shutil.copy2(file, modsPath)
+					if devMode: print(f"Overwrote {modsPath} with {file}")
+					refreshModsConfig()
+			else:
+				shutil.copy2(file, modsPath)
+				if devMode: print(f"Copied {file} to {modsPath}")
+				refreshModsConfig()
+		elif os.path.isdir(file):
+			# handle folder mod drop
+			dest = os.path.join(modsPath, os.path.basename(file))
+			if os.path.exists(dest):
+				overwrite = messagebox.askyesno("Overwrite Mod", f"The mod you are trying to import already exists. Do you want to overwrite it?")
+				if overwrite:
+					shutil.rmtree(dest)
+				else:
+					return
+			shutil.copytree(file, dest)
+			if devMode: print(f"Copied folder {file} to {dest}")
+			refreshModsConfig()
+		else:
+			messagebox.showerror("Invalid File", f"Unsupported file type: {file}")
 ### /MISC FUNCTIONS ###
 ### MAIN ###
 ## GET PATHS ##
@@ -564,7 +697,7 @@ def validateModsFolder(path):
 ## /GET PATHS ##
 ## GUI ##
 # Create the main window
-window = tk.Tk()
+window = TkinterDnD.Tk()
 def resource_path(relative_path):
 	""" Get absolute path to resource, works for development and PyInstaller """
 	try:
@@ -581,9 +714,11 @@ window.geometry("832x480")
 menuBar = tk.Menu(window)
 window.config(menu=menuBar)
 
-# Create a File menu
+# Create menubar
 filesMenuBar = tk.Menu(menuBar, tearoff=0)
+aboutMenu = tk.Menu(menuBar, tearoff=0)
 menuBar.add_cascade(label="File", menu=filesMenuBar)
+menuBar.add_command(label="About", command=createAboutWindow)
 
 # Add commands to the File menu
 filesMenuBar.add_command(label="Set Game Location", command=setGameLocation)
@@ -615,6 +750,9 @@ def createModList(sortedMods):
 	# listbox to display mods
 	modListbox = tk.Listbox(frame, width=50, height=10, activestyle="dotbox")
 	modListbox.pack(side="left", padx=5)
+
+	modListbox.drop_target_register(DND_FILES)
+	modListbox.dnd_bind('<<Drop>>', handleDrop)
 
 	# frame for buttons
 	buttonFrame = tk.Frame(frame)
@@ -809,7 +947,6 @@ gameVersionLabel.pack(pady=0, anchor="w")
 latestGameVersionLabel = tk.Label(gameFrame, text=f"Latest Game Version: {latestGameVersion}")
 latestGameVersionLabel.pack(pady=0, anchor="w")
 
-
 managerFrame = tk.Frame(window)
 managerFrame.pack(side="right", padx=5, pady=0)
 managerVersionLabel = tk.Label(managerFrame, text=f"Mod Manager Version: {managerVersion}")
@@ -818,6 +955,15 @@ latestManagerVersionLabel = tk.Label(managerFrame, text=f"Latest Mod Manager Ver
 latestManagerVersionLabel.pack(pady=0, anchor="e")
 
 getLatestVersion()
+
+
+
+json_url = "https://raw.githubusercontent.com/WINRARisyou/SMC-Desktop-Mod-Manager/refs/heads/gh-pages/files/modlist.json"
+json_file_path = "tests/downloadtest/modlist.json"
+
+# Directory to save downloaded mods
+onlineDownloadDir = modsPath
+loadMods()
 
 # Run it!!1!
 window.mainloop()
