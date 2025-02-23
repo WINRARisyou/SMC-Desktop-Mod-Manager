@@ -17,6 +17,7 @@ def downloadFile(url, filename, downloadLocation):
 
 def loadMods(json_file_path):
 	"""Fetch the JSON file, parse it, and download the mods."""
+	modlistData = []
 	try:
 		# response = requests.get(json_url)
 		# response.raise_for_status()  # Raise an error for bad status codes
@@ -56,9 +57,16 @@ def loadMods(json_file_path):
 			print(f"Mod Game Version: {mod_game_version}")
 			print(f"Mod Description: {mod_description}")
 			print("------------------------")
-			return {"File URL": file_url, "File Name": file_name, "Mod Version": mod_id, "Mod Version": mod_version}
-
+			modlistData.append({
+				"Mod ID": mod_id,
+				"File URL": file_url,
+				"File Name": file_name,
+				"Mod Version": mod_version,
+				"Mod Game Version": mod_game_version,
+				"Mod Description": mod_description
+			})
 	except requests.exceptions.RequestException as e:
 		print(f"Error fetching JSON: {e}")
 	except json.JSONDecodeError as e:
 		print(f"Error parsing JSON: {e}")
+	return modlistData

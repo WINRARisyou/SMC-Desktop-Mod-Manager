@@ -1,9 +1,9 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### DEFS ###
-devMode = True
+devMode = False
 global managerVersion
-managerVersion = "1.0.3a"
+managerVersion = "1.0.3ALPHA"
 import atexit
 import ctypes
 import json
@@ -21,7 +21,6 @@ from tkinter import filedialog, messagebox, ttk
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from zipfile import ZipFile
 import webbrowser
-
 import onlinemodlist
 
 global onWindows
@@ -122,6 +121,12 @@ def createAboutWindow():
 	creditsFrame.config(background="#1e1e1e")
 	creditsLabel = tk.Label(creditsFrame, text="Credits:\nTODO")
 	creditsLabel.pack(pady=0)
+
+def createOnlineModlistWindow():
+	onlineMods = tk.Toplevel(window)  # Create a sub-window
+	onlineMods.iconphoto(True, tk.PhotoImage(file=resource_path("icons/icon-512.png")))
+	onlineMods.title("Mod List")
+	onlineMods.geometry("832x480")
 
 def makeWebRequest(url: str, timeout: int, exceptionText: str):
 	"""
@@ -660,6 +665,7 @@ filesMenuBar = tk.Menu(menuBar, tearoff=0)
 aboutMenu = tk.Menu(menuBar, tearoff=0)
 menuBar.add_cascade(label="File", menu=filesMenuBar)
 menuBar.add_command(label="About", command=createAboutWindow)
+menuBar.add_command(label="Online Mod List", command=createOnlineModlistWindow)
 
 # Add commands to the File menu
 filesMenuBar.add_command(label="Set Game Location", command=setGameLocation)
@@ -904,8 +910,9 @@ json_file_path = "tests/downloadtest/modlist.json"
 
 # Directory to save downloaded mods
 onlineDownloadDir = modsPath
-x = onlinemodlist.loadMods(json_file_path)
-print(x)
+onlineModData = onlinemodlist.loadMods(json_file_path)
+for mod in onlineModData:
+	print(mod["Mod ID"])
 
 # Run it!!1!
 window.mainloop()
