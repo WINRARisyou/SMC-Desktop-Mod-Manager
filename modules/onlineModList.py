@@ -1,7 +1,16 @@
 import os
 import requests
 import json
-devMode = False
+import tkinter as tk
+from . import createSubWindow as subWindow, resourcePath as resPath
+
+def createWindow(baseWindow):
+	onlineMods = subWindow.createSubWindow(baseWindow, "About", "icons/icon-512.png", [640,700])  # Create a sub-window
+	onlineMods.iconphoto(True, tk.PhotoImage(file=resPath.resource_path("icons/icon-512.png")))
+	onlineMods.title("Mod List")
+	onlineMods.geometry("832x480")
+
+devMode = True
 def downloadFile(url, filename, downloadLocation):
 	"""Download a file from a URL and save it to the specified directory."""
 	response = requests.get(url, stream=True)
@@ -15,15 +24,18 @@ def downloadFile(url, filename, downloadLocation):
 	else:
 		if devMode: print(f"Failed to download: {filename} (Status Code: {response.status_code})")
 
-def loadMods(json_file_path):
+def loadMods(json_file_path, json_url="https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"):
 	"""Fetch the JSON file, parse it, and download the mods."""
 	modlistData = []
 	try:
-		# response = requests.get(json_url)
-		# response.raise_for_status()  # Raise an error for bad status codes
-		# data = response.json()
-		with open(json_file_path, 'r') as file:
-			data = json.load(file)
+		if not os.path.exists(json_file_path):
+			response = requests.get(json_url)
+			response.raise_for_status()  # Raise an error for bad status codes
+			data = response.json()
+		else:
+			# assume it's a testing environment and override online 
+			with open(json_file_path, 'r') as file:
+				data = json.load(file)
 
 		# Get the base assets URL
 		assets_url = data.get("assetsURL", "")
@@ -57,6 +69,7 @@ def loadMods(json_file_path):
 			print(f"Mod Game Version: {mod_game_version}")
 			print(f"Mod Description: {mod_description}")
 			print("------------------------")
+
 			modlistData.append({
 				"Mod ID": mod_id,
 				"File URL": file_url,

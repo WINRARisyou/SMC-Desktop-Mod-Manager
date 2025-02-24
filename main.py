@@ -3,7 +3,7 @@
 ### DEFS ###
 devMode = False
 global managerVersion
-managerVersion = "1.0.3ALPHA"
+managerVersion = "1.0.3ALPHA-3"
 import atexit
 import ctypes
 import json
@@ -21,7 +21,7 @@ from tkinter import filedialog, messagebox, ttk
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from zipfile import ZipFile
 import webbrowser
-import onlinemodlist
+from modules import onlineModList, aboutWindow, resourcePath as resPath
 
 global onWindows
 onWindows = platform.system() == "Windows"
@@ -63,6 +63,8 @@ global SelectedMod
 SelectedMod = None
 global settings
 settings = None
+global winWidth, winHeight
+winWidth = winHeight = 0
 ### /GLOBALS ###
 ### MISC FUNCTIONS ###
 def backupOriginalFile(gameFilesPath, unmodifiedFilePath):
@@ -93,40 +95,6 @@ def copyModFile():
 			else:
 				print("Invalid file type. Please select a .zip file.")
 				messagebox.showerror("Error", "Invalid file type. Please select a .zip file.")
-
-def createAboutWindow():
-	about = tk.Toplevel(window)  # Create a sub-window
-	about.iconphoto(True, tk.PhotoImage(file=resource_path("icons/icon-512.png")))
-	about.title("About")
-	about.geometry("640x700")
-	about.resizable(False, False)
-	banner_image = Image.open(resource_path("images/banner2.png"))  # Open the image file
-	scaling_factor = getScalingFactor()
-	new_width = int(640 * scaling_factor)  # Adjust width for DPI scaling
-	original_width, original_height = banner_image.size
-	new_height = int((new_width / original_width) * original_height)  # Maintain aspect ratio
-	banner_image = banner_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-	banner_photo = ImageTk.PhotoImage(banner_image)  # Convert to a format tkinter can use
-
-	# Display the image in a Label
-	banner_label = tk.Label(about, image=banner_photo)
-	banner_label.image = banner_photo  # Keep a reference to avoid garbage collection
-	banner_label.pack(pady=0)
-	info = tk.Label(about, wraplength=int(480 * scaling_factor), text="SMC Desktop Mod Manager is a user-friendly tool designed to simplify modding for Super Mario Construct. You can easily manage, install, and organize your mods with just a few clicks, the Mod Manager takes the hassle out of file management, letting you focus on customizing your gameplay.")
-	info.pack(pady=10)
-
-
-	creditsFrame = tk.Frame(about)
-	creditsFrame.pack(pady=0)
-	creditsFrame.config(background="#1e1e1e")
-	creditsLabel = tk.Label(creditsFrame, text="Credits:\nTODO")
-	creditsLabel.pack(pady=0)
-
-def createOnlineModlistWindow():
-	onlineMods = tk.Toplevel(window)  # Create a sub-window
-	onlineMods.iconphoto(True, tk.PhotoImage(file=resource_path("icons/icon-512.png")))
-	onlineMods.title("Mod List")
-	onlineMods.geometry("832x480")
 
 def makeWebRequest(url: str, timeout: int, exceptionText: str):
 	"""
@@ -232,7 +200,7 @@ def processFile(modID, modPriority, root, file, assetsPath):
 		if devMode:	print(f"Skipping {modFilePath} because a higher-priority mod ({previousModPriority}) already modified it.")
 
 def readSettingsJSON():
-	global gamePath, settings, mods_json_path, modsPath
+	global gamePath, settings, mods_json_path, modsPath, winWidth, winHeight
 	if os.path.exists("settings.json"):
 		with open("settings.json") as f:
 			settings = json.load(f)
@@ -560,14 +528,6 @@ def getLatestVersion():
 	if managerVersionInt < latestVersionInt and latestManagerVersion != "Could not get latest mod manager version":
 		askMsg()
 
-def getScalingFactor():
-	"""Get the system's DPI scaling factor."""
-	root = tk.Tk()
-	root.tk.call('tk', 'scaling')  # Get the default scaling factor
-	scaling_factor = root.tk.call('tk', 'scaling') / 1.5
-	root.destroy()
-	return scaling_factor
-
 def handleDrop(event):
 	files = window.tk.splitlist(event.data)
 	for file in files:
@@ -644,15 +604,9 @@ def validateModsFolder(path):
 ## GUI ##
 # Create the main window
 window = TkinterDnD.Tk()
-def resource_path(relative_path):
-	""" Get absolute path to resource, works for development and PyInstaller """
-	try:
-		base_path = sys._MEIPASS # Temp directory for PyInstaller --onefile
-	except AttributeError:
-		base_path = os.path.abspath(".") # Normal execution
-	return os.path.join(base_path, relative_path)
 
-window.iconphoto(True, tk.PhotoImage(file=resource_path("icons/icon-512.png")))
+
+window.iconphoto(True, tk.PhotoImage(file=resPath.resource_path("icons/icon-512.png")))
 window.title("SMC Desktop Mod Loader")
 window.geometry("832x480")
 
@@ -664,8 +618,8 @@ window.config(menu=menuBar)
 filesMenuBar = tk.Menu(menuBar, tearoff=0)
 aboutMenu = tk.Menu(menuBar, tearoff=0)
 menuBar.add_cascade(label="File", menu=filesMenuBar)
-menuBar.add_command(label="About", command=createAboutWindow)
-menuBar.add_command(label="Online Mod List", command=createOnlineModlistWindow)
+menuBar.add_command(label="About", command=lambda: aboutWindow.createAboutWindow(window))
+menuBar.add_command(label="Online Mod List", command=lambda: onlineModList.createWindow(window))
 
 # Add commands to the File menu
 filesMenuBar.add_command(label="Set Game Location", command=setGameLocation)
@@ -905,17 +859,20 @@ getLatestVersion()
 
 
 
-json_url = "https://raw.githubusercontent.com/WINRARisyou/SMC-Desktop-Mod-Manager/refs/heads/gh-pages/files/modlist.json"
-json_file_path = "tests/downloadtest/modlist.json"
 
-# Directory to save downloaded mods
-onlineDownloadDir = modsPath
-onlineModData = onlinemodlist.loadMods(json_file_path)
-for mod in onlineModData:
-	print(mod["Mod ID"])
 
 # Run it!!1!
 window.mainloop()
 ## /GUI ##
+## ONLINE MOD LIST ##
+jsonURL = "https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"
+jsonFilePath = "tests/downloadtest/modlist.json"
+
+# Directory to save downloaded mods
+onlineDownloadDir = modsPath
+onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
+for mod in onlineModData:
+	print(mod["Mod ID"])
+## /ONLINE MOD LIST ##
 ### /MAIN ###
 ### WINRARisyou was here
