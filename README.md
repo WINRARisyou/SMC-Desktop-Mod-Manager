@@ -1,7 +1,15 @@
-# Super Mario Construct Desktop Mod Manager
-Way to manage replacing game files in Super Mario Construct
+<img src="images/banner2.png" alt="Super Mario Construct Desktop Mod Manager" style="width:100%; height:auto;" />
 
-## Please report any bugs you find in the [issues tab](https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/issues), and back up your game directory due to any possible aformentioned bugs.
+# Super Mario Construct Desktop Mod Manager
+Manages replacing game files in Super Mario Construct
+
+### Please report any bugs you find in the [issues tab](https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/issues), and back up your game directory due to any possible aformentioned bugs.
+
+## Table of Contents
+- [How to Use](#how-to-use)
+- [Building from Source](#building-from-source)
+- [Making Mods](Example%20Mods/README.md)
+
 ## How to Use
 
 1. **Set Game Location**: 
@@ -51,6 +59,3 @@ Way to manage replacing game files in Super Mario Construct
 4. **Run the Application**:
 	- After building, the executable will be located in the `dist` folder, run it to start the mod manager.
 	- You can also run `main.py` to run without building the executable
-
-## Making Mods
-Open [the readme in example mods](Example%20Mods/README.md) to find out how to make some

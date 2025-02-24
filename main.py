@@ -1,7 +1,7 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### DEFS ###
-devMode = False
+devMode = True
 global managerVersion
 managerVersion = "1.0.3ALPHA-3"
 import atexit
@@ -9,7 +9,6 @@ import ctypes
 import json
 import orjson
 import os
-from PIL import Image, ImageTk
 import platform
 import requests
 import shutil
@@ -40,7 +39,6 @@ temp_dir = tempfile.mkdtemp()
 os.mkdir(os.path.join(temp_dir, "Unmodified Game Files"))
 ### /DEFS ###
 ### GLOBALS ###
-# Read settings.json
 global allModVersions
 allModVersions = {}
 global gamePath
@@ -206,23 +204,40 @@ def readSettingsJSON():
 			settings = json.load(f)
 		gamePath = settings.get("GameLocation")
 		modsPath = settings.get("ModsLocation")
+		if settings.get("Width") == None or type(settings.get("Width")) != int:
+			with open("settings.json", "w") as f:
+				settings["Width"] = 832
+				json.dump(settings, f, indent="\t")
+		if settings.get("Height") == None or type(settings.get("Height")) != int:
+			with open("settings.json", "w") as f:
+				settings["Height"] = 480
+				json.dump(settings, f, indent="\t")
+		winWidth = settings.get("Width")
+		winHeight = settings.get("Height")
 		mods_json_path = os.path.join(modsPath, "mods.json")
 	else:
 		with open("settings.json", "w") as f:
 			if os.path.exists(os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct") and onWindows:
 				if devMode: print("Super Mario Construct installed via itch.io app")
-				json.dump({"GameLocation": f"{os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct"}", "ModsLocation": "Mods"}, f, indent=4)
+				json.dump({"GameLocation": f"{os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct"}", "ModsLocation": "Mods", "Width": 832, "Height": 480}, f, indent="\t")
 			else:
-				json.dump({"GameLocation": "", "ModsLocation": "Mods"}, f, indent=4)
+				json.dump({"GameLocation": "", "ModsLocation": "Mods", "Width": 832, "Height": 480}, f, indent="\t")
 		with open("settings.json") as f:
 			settings = json.load(f)
 		gamePath = settings.get("GameLocation")
 		modsPath = settings.get("ModsLocation")
+		winWidth = settings.get("Width")
+		winHeight = settings.get("Height")
 		mods_json_path = os.path.join(modsPath, "mods.json")
 
 def refreshModsConfig():
 	"""Refresh mods.json by unpacking zip files and reading their mod.json."""
-	global modsConfig
+	global modifiedFiles, modsConfig, modVars
+	oldModsConfig = modsConfig.copy() # Keep a copy of the old configuration
+	
+	# save the current mod enabled states to 
+	for modID, var in modVars.items():
+		oldModsConfig[modID]["Enabled"] = var.get()
 	modsConfig = {} # Clear existing modsConfig
 
 	# Get a list of all mod zip files
@@ -230,7 +245,7 @@ def refreshModsConfig():
 	potential_mod_folders = [item for item in os.listdir(modsPath) if os.path.isdir(os.path.join(modsPath, item))]
 	# Sort mods alphabetically
 	mod_zips.sort()
-	
+
 	# Assign priorities alphabetically (lower alphabetically, higher priority number)
 	for priority, item in enumerate(potential_mod_folders, start=1):
 		modFolderName = item
@@ -245,9 +260,10 @@ def refreshModsConfig():
 			modName = modData.get("Name")
 			modID = modData.get("ID") # Get the mod's ID
 			if modName and modID:
-				modData["Priority"] = priority - 1 # Assign priority
+				modData["Priority"] = oldModsConfig.get(modID, {}).get("Priority", priority - 1)
+				modData["Enabled"] = oldModsConfig.get(modID, {}).get("Enabled", False)
 				updateModsConfig(modName, modData, f"{modsPath}/{modFolderName}")
-				if devMode:	print(f"Folder \"{modFolderName}\" parsed\n")
+				if devMode: print(f"Folder \"{modFolderName}\" parsed\n")
 
 	# Assign priorities alphabetically (lower alphabetically, higher priority number)
 	for priority, item in enumerate(mod_zips, start=1):
@@ -262,18 +278,19 @@ def refreshModsConfig():
 				modName = modData.get("Name")
 				modID = modData.get("ID") # Get the mod's ID
 				if modName and modID:
-					modData["Priority"] = priority - 1 # Assign priority
+					modData["Priority"] = oldModsConfig.get(modID, {}).get("Priority", priority - 1) # Keep old priority if exists
+					modData["Enabled"] = oldModsConfig.get(modID, {}).get("Enabled", False) # Keep old enabled status if exists
 					updateModsConfig(modName, modData, f"{modFolderName}.zip")
-					if devMode:	print(f"{modFolderName} extracted and parsed\n")
+					if devMode: print(f"{modFolderName} extracted and parsed\n")
 
 	# Save the updated modsConfig to mods.json
 	with open(mods_json_path, "w") as f:
-		json.dump(modsConfig, f, indent=4)
+		json.dump(modsConfig, f, indent="\t")
 
 	# Update the mod list in the GUI
 	sortedMods = sortModsByPriority(modsConfig)
 	createModList(sortedMods)
-
+	
 	# Clear the temp folder
 	# Clear the contents of temp_dir without deleting the directory itself
 	for item in os.listdir(temp_dir):
@@ -350,7 +367,7 @@ def saveAndPlay():
 
 	# Write the updated modsConfig to mods.json
 	with open(mods_json_path, "w") as f:
-		json.dump(modsConfig, f, indent=4)
+		json.dump(modsConfig, f, indent="\t")
 
 	for item in modsConfig:
 		if not item:
@@ -388,7 +405,7 @@ def saveAndPlay():
 					modsConfig[mod]["Enabled"] = False
 					createModList(sortModsByPriority(modsConfig))
 					with open(mods_json_path, "w") as f:
-						json.dump(modsConfig, f, indent=4)
+						json.dump(modsConfig, f, indent="\t")
 						parseModFolder(os.path.join(temp_dir, modFolderName))
 						saveAndPlay()
 					return
@@ -404,7 +421,7 @@ def setGameLocation():
 	if newGamePath and validateGameFolder(newGamePath):
 		settings["GameLocation"] = newGamePath
 		with open("settings.json", "w") as f:
-			json.dump(settings, f, indent=4)
+			json.dump(settings, f, indent="\t")
 		readSettingsJSON()
 		newGamePath = settings.get("GameLocation")
 		gameVersion = getInstalledGameVersion()
@@ -422,7 +439,7 @@ def setModsLocation():
 	if newModsPath and validateModsFolder(newModsPath):
 		settings["ModsLocation"] = newModsPath
 		with open("settings.json", "w") as f:
-			json.dump(settings, f, indent=4)
+			json.dump(settings, f, indent="\t")
 		readSettingsJSON()
 		refreshModsConfig()
 	elif not newModsPath == "":
@@ -450,8 +467,14 @@ def updateModsConfig(modName, modData, fileName):
 	modsConfig[modID]["Name"] = modName # Store the mod name for display purposes
 	with open(mods_json_path, "w") as f:
 		print(mods_json_path)
-		json.dump(modsConfig, f, indent=4)
+		json.dump(modsConfig, f, indent="\t")
 	if devMode: print(f"Updated {modName} (ID: {modID}) in mods.json")
+
+def windowResized(event):
+	settings["Width"] = window.winfo_width()
+	settings["Height"] = window.winfo_height()
+	with open("settings.json", "w") as f:
+		json.dump(settings, f, indent="\t")
 
 def findGameVer(data):
 	lastNearestIndex = -1 # Track the last occurrence of "nearest"
@@ -528,7 +551,7 @@ def getLatestVersion():
 	if managerVersionInt < latestVersionInt and latestManagerVersion != "Could not get latest mod manager version":
 		askMsg()
 
-def handleDrop(event):
+def handleFileDrop(event):
 	files = window.tk.splitlist(event.data)
 	for file in files:
 		if os.path.isfile(file) and file.endswith('.zip'):
@@ -568,7 +591,7 @@ if not os.path.exists(modsPath):
 	os.mkdir(modsPath)
 if not os.path.exists(mods_json_path) or os.path.getsize(mods_json_path) == 0:
 	with open(mods_json_path, "w") as f:
-		json.dump({}, f, indent=4)
+		json.dump({}, f, indent="\t")
 try:
 	with open(mods_json_path) as f:
 		modsConfig = json.load(f)
@@ -603,36 +626,47 @@ def validateModsFolder(path):
 ## /GET PATHS ##
 ## GUI ##
 # Create the main window
-window = TkinterDnD.Tk()
+window = TkinterDnD.Tk() #DnD stands for drag and drop
 
+# Set minimum window size
+window.minsize(480, 480)
+
+window.bind("<Configure>", windowResized)
 
 window.iconphoto(True, tk.PhotoImage(file=resPath.resource_path("icons/icon-512.png")))
 window.title("SMC Desktop Mod Loader")
-window.geometry("832x480")
+window.geometry(f"{winWidth}x{winHeight}")
 
-# Create a menu bar
+# Create menu bar
 menuBar = tk.Menu(window)
 window.config(menu=menuBar)
-
-# Create menubar
 filesMenuBar = tk.Menu(menuBar, tearoff=0)
-aboutMenu = tk.Menu(menuBar, tearoff=0)
+toolsMenuBar = tk.Menu(menuBar, tearoff=0)
+helpMenuBar = tk.Menu(menuBar, tearoff=0)
 menuBar.add_cascade(label="File", menu=filesMenuBar)
-menuBar.add_command(label="About", command=lambda: aboutWindow.createAboutWindow(window))
-menuBar.add_command(label="Online Mod List", command=lambda: onlineModList.createWindow(window))
+menuBar.add_cascade(label="Tools", menu=toolsMenuBar)
+menuBar.add_cascade(label="Help", menu=helpMenuBar)
 
-# Add commands to the File menu
+# File Menu
 filesMenuBar.add_command(label="Set Game Location", command=setGameLocation)
 filesMenuBar.add_command(label="Set Mods Folder Location", command=setModsLocation)
-if devMode: filesMenuBar.add_separator()
-if devMode: filesMenuBar.add_command(label="Open Temp Folder", command=lambda: os.startfile(temp_dir))
-filesMenuBar.add_separator()
-filesMenuBar.add_command(label="Refresh Mods", command=refreshModsConfig)
-filesMenuBar.add_command(label="Open Game folder", command=openGameFolder)
-filesMenuBar.add_command(label="Open Mods folder", command=openModFolder)
-filesMenuBar.add_command(label="Import mod", command=copyModFile)
 filesMenuBar.add_separator()
 filesMenuBar.add_command(label="Exit", command=window.quit)
+
+# Tools Menu
+toolsMenuBar.add_command(label="Online Mod List", command=lambda: onlineModList.createWindow(window))
+toolsMenuBar.add_command(label="Refresh Mods", command=refreshModsConfig)
+toolsMenuBar.add_command(label="Open Game Folder", command=openGameFolder)
+toolsMenuBar.add_command(label="Open Mods Folder", command=openModFolder)
+toolsMenuBar.add_command(label="Import Mod", command=copyModFile)
+if devMode:
+	toolsMenuBar.add_separator()
+	toolsMenuBar.add_command(label="Open Temp Folder", command=lambda: os.startfile(temp_dir))
+
+# Help menu
+helpMenuBar.add_command(label="About", command=lambda: aboutWindow.createAboutWindow(window))
+helpMenuBar.add_command(label="Report a Bug", command=lambda: webbrowser.open("https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/issues/new?template=bug-report-template.md"))
+helpMenuBar.add_command(label="Create a Mod", command=lambda: webbrowser.open("https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/tree/main/Example%20Mods#how-to-create-a-mod"))
 
 # Frame to hold mod entries
 modsFrame = tk.Frame(window)
@@ -653,7 +687,7 @@ def createModList(sortedMods):
 	modListbox.pack(side="left", padx=5)
 
 	modListbox.drop_target_register(DND_FILES)
-	modListbox.dnd_bind('<<Drop>>', handleDrop)
+	modListbox.dnd_bind('<<Drop>>', handleFileDrop)
 
 	# frame for buttons
 	buttonFrame = tk.Frame(frame)
@@ -737,7 +771,7 @@ def createModList(sortedMods):
 				else:
 					if devMode:	print("Mod not found in mods.json")
 				with open(mods_json_path, "w") as f:
-					json.dump(modsConfig, f, indent=4)
+					json.dump(modsConfig, f, indent="\t")
 				refreshModsConfig()
 				if deleteModButton.winfo_exists():
 					deleteModButton.config(state="disabled")
@@ -763,7 +797,7 @@ def createModList(sortedMods):
 
 				# Save updated priorities to mods.json
 				with open(mods_json_path, "w") as f:
-					json.dump(modsConfig, f, indent=4)
+					json.dump(modsConfig, f, indent="\t")
 
 				# Refresh UI & reselect moved item
 				updateModList()
@@ -856,13 +890,6 @@ latestManagerVersionLabel = tk.Label(managerFrame, text=f"Latest Mod Manager Ver
 latestManagerVersionLabel.pack(pady=0, anchor="e")
 
 getLatestVersion()
-
-
-
-
-
-# Run it!!1!
-window.mainloop()
 ## /GUI ##
 ## ONLINE MOD LIST ##
 jsonURL = "https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"
@@ -874,5 +901,11 @@ onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
 for mod in onlineModData:
 	print(mod["Mod ID"])
 ## /ONLINE MOD LIST ##
+
+
+
+### Run it!!1!
+window.update()
+window.mainloop()
 ### /MAIN ###
 ### WINRARisyou was here
