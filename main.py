@@ -33,6 +33,9 @@ def onExit():
 	for file in modFiles:
 		if os.path.exists(file):
 			os.remove(file)
+	# Save window size
+	with open("settings.json", "w") as f:
+		json.dump(settings, f, indent="\t")
 
 atexit.register(onExit)
 temp_dir = tempfile.mkdtemp()
@@ -473,8 +476,6 @@ def updateModsConfig(modName, modData, fileName):
 def windowResized(event):
 	settings["Width"] = window.winfo_width()
 	settings["Height"] = window.winfo_height()
-	with open("settings.json", "w") as f:
-		json.dump(settings, f, indent="\t")
 
 def findGameVer(data):
 	lastNearestIndex = -1 # Track the last occurrence of "nearest"
