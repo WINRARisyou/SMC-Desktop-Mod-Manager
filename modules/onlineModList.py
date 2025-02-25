@@ -8,89 +8,110 @@ from . import createSubWindow as subWindow, resourcePath as resPath
 
 devMode = False
 downloadLocation = None
-def createWindow(baseWindow, gameVersion):
+onWindows = None
+selected_mod = None
+def handleScroll(element, event):
+	if event.num == 4:
+		element.yview_scroll(-1, "units")
+	elif event.num == 5:
+		element.yview_scroll(1, "units")
+	else:
+		element.yview_scroll(int(-1*(event.delta/120)), "units") # For Windows and macOS
+
+def createWindow(baseWindow, gameVersion, modlistData):
 	onlineMods = subWindow.createSubWindow(baseWindow, "Online Mod List", "icons/icon-512.png", [832, 480]) # Create a sub-window
 	onlineMods.iconphoto(True, tk.PhotoImage(file=resPath.resource_path("icons/icon-512.png")))
 	onlineMods.title("Online Mod List")
 	onlineMods.geometry("832x480")
 
-	# Frame to hold mod entries
-	modsFrame = tk.Frame(onlineMods)
-	modsFrame.pack(fill="both", expand=True, padx=10, pady=10)
+	# Left Panel: Mod List
+	modListFrame = tk.Frame(onlineMods)
+	modListFrame.pack(side="left", fill="y", padx=10, pady=10)
 
-	# Canvas and scrollbar for mod list
-	canvas = tk.Canvas(modsFrame)
-	scrollbar = ttk.Scrollbar(modsFrame, orient="vertical", command=canvas.yview)
-	scrollable_frame = tk.Frame(canvas)
+	modListCanvas = tk.Canvas(modListFrame)
+	modListScrollbar = ttk.Scrollbar(modListFrame, orient="vertical", command=modListCanvas.yview)
+	modListScrollableFrame = tk.Frame(modListCanvas)
 
-	scrollable_frame.bind(
+	modListCanvas.bind_all("<MouseWheel>", lambda e: handleScroll(modListCanvas, e))
+	modListCanvas.bind_all("<Button-4>", lambda e: handleScroll(modListCanvas, e))
+	modListCanvas.bind_all("<Button-5>", lambda e: handleScroll(modListCanvas, e))
+
+	modListScrollableFrame.bind(
 		"<Configure>",
-		lambda e: canvas.configure(
-			scrollregion=canvas.bbox("all")
+		lambda e: modListCanvas.configure(
+			scrollregion=modListCanvas.bbox("all")
 		)
 	)
 
-	canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-	canvas.configure(yscrollcommand=scrollbar.set)
+	modListCanvas.create_window((0, 0), window=modListScrollableFrame, anchor="nw")
+	modListCanvas.configure(yscrollcommand=modListScrollbar.set)
 
-	canvas.pack(side="left", fill="both", expand=True)
-	scrollbar.pack(side="right", fill="y")
+	modListCanvas.pack(side="left", fill="both", expand=True)
+	modListScrollbar.pack(side="right", fill="y")
 
-	# Load mods and display them
-	modlistData = loadMods("tests/downloadtest/modlist.json")
+	# Center: Screenshots
+	screenshotsFrame = tk.Frame(onlineMods)
+	screenshotsFrame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+
+	screenshotsLabel = tk.Label(screenshotsFrame, text="Screenshots", font=("Arial", 16))
+	screenshotsLabel.pack(pady=10)
+
+	# Bottom: Mod Details and Download
+	detailsFrame = tk.Frame(onlineMods)
+	detailsFrame.pack(side="bottom", fill="x", padx=10, pady=10)
+
+	# Mod Icon and Info
+	modInfoFrame = tk.Frame(detailsFrame)
+	modInfoFrame.pack(side="left", fill="x", expand=True)
+
+	modIconLabel = tk.Label(modInfoFrame, text="Mod Icon") # Placeholder
+	modIconLabel.pack(side="left", padx=5)
+
+	modDetailsFrame = tk.Frame(modInfoFrame)
+	modDetailsFrame.pack(side="left", fill="x", expand=True)
+
+	modNameLabel = tk.Label(modDetailsFrame, text="Mod Name", font=("Arial", 12, "bold"))
+	modNameLabel.pack(anchor="w")
+
+	modDescriptionLabel = tk.Label(modDetailsFrame, text="Mod Description", wraplength=400, justify="left")
+	modDescriptionLabel.pack(anchor="w")
+
+	# Version Info
+	versionFrame = tk.Frame(detailsFrame)
+	versionFrame.pack(side="right", padx=10)
+
+	installedVersionLabel = tk.Label(versionFrame, text="Installed Mod Version")
+	installedVersionLabel.pack(anchor="e")
+
+	latestVersionLabel = tk.Label(versionFrame, text="Latest Mod Version")
+	latestVersionLabel.pack(anchor="e")
+
+	installedGameVersionLabel = tk.Label(versionFrame, text="Installed Game Version")
+	installedGameVersionLabel.pack(anchor="e")
+
+	modGameVersionLabel = tk.Label(versionFrame, text="Mod Game Version")
+	modGameVersionLabel.pack(anchor="e")
+
+	# Download Button
+	downloadButton = ttk.Button(detailsFrame, text="Download", command=lambda: downloadMod(selected_mod, gameVersion))
+	downloadButton.pack(side="right", padx=5)
+
+	# Populate Mod List
 	for mod in modlistData:
-		modFrame = tk.Frame(scrollable_frame)
-		modFrame.pack(fill="x", pady=5)
-		if devMode: print(mod["Mod Manager Images Folder URL"])
-		# Load mod icon
-		icon_url = f"{mod["Mod Manager Images Folder URL"]}/icon.png"
-		icon_image = downloadImage(icon_url)
-		if icon_image:
-			icon_label = tk.Label(modFrame, image=icon_image)
-			icon_label.image = icon_image
-			icon_label.pack(side="left", padx=5)
+		modButton = ttk.Button(modListScrollableFrame, text=mod["Mod Name"], command=lambda m=mod: showModDetails(m, modNameLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, gameVersion))
+		modButton.pack(fill="x", pady=5)
 
-		# Mod info
-		modInfoFrame = tk.Frame(modFrame)
-		modInfoFrame.pack(side="left", fill="x", expand=True)
+def showModDetails(mod, modNameLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, gameVersion):
+	global selected_mod
+	selected_mod = mod
+	modNameLabel.config(text=mod["Mod Name"])
+	modDescriptionLabel.config(text=mod["Mod Description"])
+	installedVersionLabel.config(text=f"Installed Mod Version: {getInstalledModVersion(mod['Mod ID'])}")
+	latestVersionLabel.config(text=f"Latest Mod Version: {mod['Mod Version']}")
+	installedGameVersionLabel.config(text=f"Installed Game Version: {gameVersion}")
+	modGameVersionLabel.config(text=f"Mod Game Version: {mod['Mod Game Version']}")
 
-		modNameLabel = tk.Label(modInfoFrame, text=mod["Mod Name"], font=("Arial", 12, "bold"))
-		modNameLabel.pack(anchor="w")
-
-		modDescriptionLabel = tk.Label(modInfoFrame, text=mod["Mod Description"], wraplength=400, justify="left")
-		modDescriptionLabel.pack(anchor="w")
-
-		modVersionLabel = tk.Label(modInfoFrame, text=f"Mod Version: {mod["Mod Version"]}")
-		modVersionLabel.pack(anchor="w")
-
-		modGameVersionLabel = tk.Label(modInfoFrame, text=f"Game Version: {mod["Mod Game Version"]}")
-		modGameVersionLabel.pack(anchor="w")
-
-		# Check if the mod is installed and show installed version
-		installedModVersion = getInstalledModVersion(mod["Mod ID"])
-		if installedModVersion:
-			installedModVersionLabel = tk.Label(modInfoFrame, text=f"Installed Version: {installedModVersion}")
-			installedModVersionLabel.pack(anchor="w")
-
-		# Warning if game versions don"t match
-		print(mod["Mod Game Version"])
-		print(gameVersion)
-		print(mod["Mod Game Version"] != gameVersion)
-		if mod["Mod Game Version"] != gameVersion:
-			if mod["Mod Game Version"].endswith("*"):
-				modVer = mod["Mod Game Version"][:-1]
-				if not gameVersion.startswith(modVer):
-					warningLabel = tk.Label(modInfoFrame, text="Warning: Mod game version does not match installed game version!", fg="red")
-					warningLabel.pack(anchor="w")
-			else:
-				warningLabel = tk.Label(modInfoFrame, text="Warning: Mod game version does not match installed game version!", fg="red")
-				warningLabel.pack(anchor="w")
-
-
-		# Download button
-		downloadButton = ttk.Button(modFrame, text="Download", command=lambda m=mod: downloadMod(m, gameVersion))
-		downloadButton.pack(side="right", padx=5)
-
+	# TODO: Load and display screenshots	
 def downloadImage(url):
 	try:
 		response = requests.get(url, stream=True)
@@ -108,6 +129,9 @@ def downloadImage(url):
 def getInstalledModVersion(mod_id):
 	# TODO
 	# This function should check if the mod is installed and return its version
+	...
+
+def downloadSelectedMod():
 	...
 
 def downloadMod(mod, gameVersion):
@@ -143,7 +167,7 @@ def loadMods(json_file_path, json_url="https://winrarisyou.github.io/SMC-Desktop
 	"""Fetch the JSON file, parse it, and download the mods."""
 	modlistData = []
 	try:
-		if not os.path.exists(json_file_path):
+		if not os.path.exists(json_file_path) or json_file_path == "":
 			response = requests.get(json_url)
 			response.raise_for_status() # Raise an error for bad status codes
 			data = response.json()

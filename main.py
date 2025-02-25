@@ -236,9 +236,10 @@ def readSettingsJSON():
 def refreshModsConfig():
 	"""Refresh mods.json by unpacking zip files and reading their mod.json."""
 	global modifiedFiles, modsConfig, modVars
-	oldModsConfig = modsConfig.copy() # Keep a copy of the old configuration
+	modVars = {modID: tk.BooleanVar(value=modData.get("Enabled", False)) for modID, modData in sortModsByPriority(modsConfig)}
+	oldModsConfig = modsConfig.copy()
 	
-	# save the current mod enabled states to 
+	# save the current mod enabled states to oldModsConfig
 	for modID, var in modVars.items():
 		oldModsConfig[modID]["Enabled"] = var.get()
 	modsConfig = {} # Clear existing modsConfig
@@ -651,15 +652,15 @@ menuBar.add_cascade(label="Help", menu=helpMenuBar)
 # File Menu
 filesMenuBar.add_command(label="Set Game Location", command=setGameLocation)
 filesMenuBar.add_command(label="Set Mods Folder Location", command=setModsLocation)
+filesMenuBar.add_command(label="Open Game Folder", command=openGameFolder)
+filesMenuBar.add_command(label="Open Mods Folder", command=openModFolder)
+filesMenuBar.add_command(label="Import Mod", command=copyModFile)
 filesMenuBar.add_separator()
 filesMenuBar.add_command(label="Exit", command=window.quit)
 
 # Tools Menu
-toolsMenuBar.add_command(label="Online Mod List", command=lambda: onlineModList.createWindow(window, gameVersion))
+toolsMenuBar.add_command(label="Online Mod List", command=lambda: onlineModList.createWindow(window, gameVersion, onlineModData))
 toolsMenuBar.add_command(label="Refresh Mods", command=refreshModsConfig)
-toolsMenuBar.add_command(label="Open Game Folder", command=openGameFolder)
-toolsMenuBar.add_command(label="Open Mods Folder", command=openModFolder)
-toolsMenuBar.add_command(label="Import Mod", command=copyModFile)
 if devMode:
 	toolsMenuBar.add_separator()
 	toolsMenuBar.add_command(label="Open Temp Folder", command=lambda: os.startfile(temp_dir))
@@ -745,9 +746,10 @@ def createModList(sortedMods):
 	global modVars
 	modVars = {modID: tk.BooleanVar(value=modData.get("Enabled", False)) for modID, modData in sortedMods}
 	def deleteMod(mod):
-		print(mod)
-		print(SelectedMod)
-		print(mod and modsPath in os.path.join(modsPath, mod))
+		global modVars
+		if devMode: print(mod)
+		if devMode: print(SelectedMod)
+		if devMode: print(mod and modsPath in os.path.join(modsPath, mod))
 		modID = None
 		for id, data in modsConfig.items():
 			if data.get("FileName") == mod:
@@ -760,11 +762,10 @@ def createModList(sortedMods):
 		if warning:
 			if mod:
 				if os.path.isdir(os.path.join(modsPath, mod)):
-					if not mod and modsPath in os.path.join(modsPath, mod):
+					if not mod and modsPath in os.path.join(modsPath, mod) or mod == modsPath:
 						messagebox.showerror("Error", "Invalid mod path. Mod not removed.")
 					else:
-						pass
-						#shutil.rmtree(os.path.join(modsPath, mod))
+						shutil.rmtree(os.path.join(modsPath, mod))
 				else:
 					os.remove(os.path.join(modsPath, mod))
 				if modID:
@@ -773,9 +774,9 @@ def createModList(sortedMods):
 					if devMode:	print("Mod not found in mods.json")
 				with open(mods_json_path, "w") as f:
 					json.dump(modsConfig, f, indent="\t")
-				refreshModsConfig()
 				if deleteModButton.winfo_exists():
 					deleteModButton.config(state="disabled")
+				refreshModsConfig()
 			else:
 				messagebox.showerror("Error", "No mod selected.")
 		if devMode:	print(f"Deleted {mod}")
@@ -898,7 +899,7 @@ jsonFilePath = "tests/downloadtest/modlist.json"
 
 # Directory to save downloaded mods
 onlineModList.downloadLocation = modsPath
-onlineModList.devMode = devMode
+#onlineModList.modlistData = ""
 onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
 for mod in onlineModData:
 	print(mod["Mod ID"])
