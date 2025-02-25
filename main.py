@@ -655,7 +655,7 @@ filesMenuBar.add_separator()
 filesMenuBar.add_command(label="Exit", command=window.quit)
 
 # Tools Menu
-toolsMenuBar.add_command(label="Online Mod List", command=lambda: onlineModList.createWindow(window))
+toolsMenuBar.add_command(label="Online Mod List", command=lambda: onlineModList.createWindow(window, gameVersion))
 toolsMenuBar.add_command(label="Refresh Mods", command=refreshModsConfig)
 toolsMenuBar.add_command(label="Open Game Folder", command=openGameFolder)
 toolsMenuBar.add_command(label="Open Mods Folder", command=openModFolder)
