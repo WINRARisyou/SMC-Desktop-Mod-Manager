@@ -14,6 +14,7 @@ pip install subprocess
 pip install sys
 pip install tempfile
 pip install tkinter
+pip install tkinterdnd2
 pip install zipfile
 
 echo Installation complete.

@@ -897,7 +897,8 @@ jsonURL = "https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.j
 jsonFilePath = "tests/downloadtest/modlist.json"
 
 # Directory to save downloaded mods
-onlineDownloadDir = modsPath
+onlineModList.downloadLocation = modsPath
+onlineModList.devMode = devMode
 onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
 for mod in onlineModData:
 	print(mod["Mod ID"])

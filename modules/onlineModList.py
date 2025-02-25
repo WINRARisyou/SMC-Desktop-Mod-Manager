@@ -6,10 +6,10 @@ from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 from . import createSubWindow as subWindow, resourcePath as resPath
 
-devMode = True
-
+devMode = False
+downloadLocation = None
 def createWindow(baseWindow, gameVersion):
-	onlineMods = subWindow.createSubWindow(baseWindow, "Online Mod List", "icons/icon-512.png", [832, 480])  # Create a sub-window
+	onlineMods = subWindow.createSubWindow(baseWindow, "Online Mod List", "icons/icon-512.png", [832, 480]) # Create a sub-window
 	onlineMods.iconphoto(True, tk.PhotoImage(file=resPath.resource_path("icons/icon-512.png")))
 	onlineMods.title("Online Mod List")
 	onlineMods.geometry("832x480")
@@ -41,13 +41,13 @@ def createWindow(baseWindow, gameVersion):
 	for mod in modlistData:
 		modFrame = tk.Frame(scrollable_frame)
 		modFrame.pack(fill="x", pady=5)
-
+		if devMode: print(mod["Mod Manager Images Folder URL"])
 		# Load mod icon
-		icon_url = f"{mod['Mod Manager Images Folder URL']}/icon.png"
+		icon_url = f"{mod["Mod Manager Images Folder URL"]}/icon.png"
 		icon_image = downloadImage(icon_url)
 		if icon_image:
 			icon_label = tk.Label(modFrame, image=icon_image)
-			icon_label.image = icon_image  # Keep a reference to avoid garbage collection
+			icon_label.image = icon_image
 			icon_label.pack(side="left", padx=5)
 
 		# Mod info
@@ -60,10 +60,10 @@ def createWindow(baseWindow, gameVersion):
 		modDescriptionLabel = tk.Label(modInfoFrame, text=mod["Mod Description"], wraplength=400, justify="left")
 		modDescriptionLabel.pack(anchor="w")
 
-		modVersionLabel = tk.Label(modInfoFrame, text=f"Mod Version: {mod['Mod Version']}")
+		modVersionLabel = tk.Label(modInfoFrame, text=f"Mod Version: {mod["Mod Version"]}")
 		modVersionLabel.pack(anchor="w")
 
-		modGameVersionLabel = tk.Label(modInfoFrame, text=f"Game Version: {mod['Mod Game Version']}")
+		modGameVersionLabel = tk.Label(modInfoFrame, text=f"Game Version: {mod["Mod Game Version"]}")
 		modGameVersionLabel.pack(anchor="w")
 
 		# Check if the mod is installed and show installed version
@@ -72,15 +72,19 @@ def createWindow(baseWindow, gameVersion):
 			installedModVersionLabel = tk.Label(modInfoFrame, text=f"Installed Version: {installedModVersion}")
 			installedModVersionLabel.pack(anchor="w")
 
-		# Warning if game versions don't match
-		if mod["Mod Game Version"] != gameVersion and mod["Mod Game Version"].endswith("*"):
-			modVer = mod["Mod Game Version"][:-1]
-			if not gameVersion.startswith(modVer):
+		# Warning if game versions don"t match
+		print(mod["Mod Game Version"])
+		print(gameVersion)
+		print(mod["Mod Game Version"] != gameVersion)
+		if mod["Mod Game Version"] != gameVersion:
+			if mod["Mod Game Version"].endswith("*"):
+				modVer = mod["Mod Game Version"][:-1]
+				if not gameVersion.startswith(modVer):
+					warningLabel = tk.Label(modInfoFrame, text="Warning: Mod game version does not match installed game version!", fg="red")
+					warningLabel.pack(anchor="w")
+			else:
 				warningLabel = tk.Label(modInfoFrame, text="Warning: Mod game version does not match installed game version!", fg="red")
 				warningLabel.pack(anchor="w")
-		else:
-			warningLabel = tk.Label(modInfoFrame, text="Warning: Mod game version does not match installed game version!", fg="red")
-			warningLabel.pack(anchor="w")
 
 
 		# Download button
@@ -92,10 +96,10 @@ def downloadImage(url):
 		response = requests.get(url, stream=True)
 		if response.status_code == 200:
 			image = Image.open(response.raw)
-			image = image.resize((64, 64), Image.ANTIALIAS)
+			image = image.resize((64, 64), Image.Resampling.LANCZOS)
 			return ImageTk.PhotoImage(image)
 		else:
-			print(f"Failed to download image: {url} (Status Code: {response.status_code})")
+			print(f"Failed to get image: {url} (Status Code: {response.status_code})")
 			return None
 	except Exception as e:
 		print(f"Error downloading image: {e}")
@@ -108,12 +112,19 @@ def getInstalledModVersion(mod_id):
 
 def downloadMod(mod, gameVersion):
 	if mod["Mod Game Version"] != gameVersion:
-		warning = messagebox.askyesno("Warning", "The mod game version does not match the installed game version. Do you want to continue?")
-		if not warning:
-			return
+			if mod["Mod Game Version"].endswith("*"):
+				modVer = mod["Mod Game Version"][:-1]
+				if not gameVersion.startswith(modVer):
+					warning = messagebox.askyesno("Warning", "The mod game version does not match the installed game version. Do you want to continue?")
+					if not warning:
+						return
+			else:
+				warning = messagebox.askyesno("Warning", "The mod game version does not match the installed game version. Do you want to continue?")
+				if not warning:
+					return
 
-	downloadFile(mod["File URL"], mod["File Name"], "Mods")
-	messagebox.showinfo("Success", f"Mod {mod['Mod Name']} downloaded successfully!")
+	downloadFile(mod["File URL"], mod["File Name"], downloadLocation)
+	messagebox.showinfo("Success", f"Mod {mod["Mod Name"]} downloaded successfully!")
 
 def downloadFile(url, filename, downloadLocation):
 	"""Download a file from a URL and save it to the specified directory."""
@@ -121,7 +132,7 @@ def downloadFile(url, filename, downloadLocation):
 	if devMode: print(url)
 	if response.status_code == 200:
 		file_path = os.path.join(downloadLocation, filename)
-		with open(file_path, 'wb') as file:
+		with open(file_path, "wb") as file:
 			for chunk in response.iter_content(chunk_size=8192):
 				file.write(chunk)
 		if devMode: print(f"Downloaded: {filename}")
@@ -134,23 +145,23 @@ def loadMods(json_file_path, json_url="https://winrarisyou.github.io/SMC-Desktop
 	try:
 		if not os.path.exists(json_file_path):
 			response = requests.get(json_url)
-			response.raise_for_status()  # Raise an error for bad status codes
+			response.raise_for_status() # Raise an error for bad status codes
 			data = response.json()
 		else:
-			# assume it's a testing environment and override online download
-			with open(json_file_path, 'r') as file:
+			# assume it"s a testing environment and override online download
+			with open(json_file_path, "r") as file:
 				data = json.load(file)
 
 		# Get the base assets URL
 		assets_url = data.get("assetsURL", "")
 		if not assets_url:
-			print("Error: 'assetsURL' not found in JSON.")
+			print("Error: \"assetsURL\" not found in JSON.")
 			return
 
 		# Iterate through the mods and download them
 		for mod_id, modData in data.items():
 			if mod_id == "assetsURL":
-				continue  # Skip the assetsURL entry
+				continue # Skip the assetsURL entry
 
 			file_name = modData.get("FileName", "")
 			mod_name = modData.get("Name")
@@ -163,10 +174,11 @@ def loadMods(json_file_path, json_url="https://winrarisyou.github.io/SMC-Desktop
 
 			if assets_url.endswith("/"):
 				file_url = f"{assets_url}{file_name}"
+				screenshots_url = f"{assets_url}{mod_id}"
 			else:
 				file_url = f"{assets_url}/{file_name}"
+				screenshots_url = f"{assets_url}/{mod_id}"
 
-			screenshots_url = file_url[:-4]
 			print("------------------------")
 			print(f"File URL: {file_url}")
 			print(f"File Name: {file_name}")
