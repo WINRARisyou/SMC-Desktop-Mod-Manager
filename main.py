@@ -399,7 +399,7 @@ def saveAndPlay():
 			if allModVersions[mod].endswith("*"):
 				modVersion = allModVersions[mod][:-1]
 				if gameVersion.startswith(modVersion):
-					break
+					continue
 			msg = tk.messagebox.askyesnocancel(title="Possible Mod Incompatability", message=f"Mod \"{modsConfig[mod]["Name"]}\" may not be compatible with the current game version ({gameVersion}), as it was built for {allModVersions[mod]}.\nDo you want to disable it?", icon="warning")
 			match msg:
 				case False:
@@ -895,14 +895,14 @@ getLatestVersion()
 ## /GUI ##
 ## ONLINE MOD LIST ##
 jsonURL = "https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"
-jsonFilePath = "tests/downloadtest/modlist.json"
+if devMode: jsonFilePath = "tests/downloadtest/modlist.json"
 
-# Directory to save downloaded mods
 onlineModList.downloadLocation = modsPath
-#onlineModList.modlistData = ""
+installedMods = {}
+for modID in modsConfig:
+	installedMods[modID] = modsConfig[modID]["Version"]
+onlineModList.installedMods = installedMods
 onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
-for mod in onlineModData:
-	print(mod["Mod ID"])
 ## /ONLINE MOD LIST ##
 
 

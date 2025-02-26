@@ -9,7 +9,9 @@ from . import createSubWindow as subWindow, resourcePath as resPath
 devMode = False
 downloadLocation = None
 onWindows = None
-selected_mod = None
+selectedMod = None
+installedMods = None
+showOutput = False
 def handleScroll(element, event):
 	if event.num == 4:
 		element.yview_scroll(-1, "units")
@@ -19,10 +21,7 @@ def handleScroll(element, event):
 		element.yview_scroll(int(-1*(event.delta/120)), "units") # For Windows and macOS
 
 def createWindow(baseWindow, gameVersion, modlistData):
-	onlineMods = subWindow.createSubWindow(baseWindow, "Online Mod List", "icons/icon-512.png", [832, 480]) # Create a sub-window
-	onlineMods.iconphoto(True, tk.PhotoImage(file=resPath.resource_path("icons/icon-512.png")))
-	onlineMods.title("Online Mod List")
-	onlineMods.geometry("832x480")
+	onlineMods = subWindow.createSubWindow(baseWindow, "Online Mod List", "icons/icon-512.png", [1440, 720]) # Create a sub-window
 
 	# Left Panel: Mod List
 	modListFrame = tk.Frame(onlineMods)
@@ -89,27 +88,38 @@ def createWindow(baseWindow, gameVersion, modlistData):
 	installedGameVersionLabel = tk.Label(versionFrame, text="Installed Game Version")
 	installedGameVersionLabel.pack(anchor="e")
 
-	modGameVersionLabel = tk.Label(versionFrame, text="Mod Game Version")
+	modGameVersionLabel = tk.Label(versionFrame, text="Mod Target Version")
 	modGameVersionLabel.pack(anchor="e")
 
 	# Download Button
-	downloadButton = ttk.Button(detailsFrame, text="Download", command=lambda: downloadMod(selected_mod, gameVersion))
+	downloadButton = ttk.Button(detailsFrame, text="Download", command=lambda: downloadMod(selectedMod, gameVersion))
 	downloadButton.pack(side="right", padx=5)
 
 	# Populate Mod List
 	for mod in modlistData:
-		modButton = ttk.Button(modListScrollableFrame, text=mod["Mod Name"], command=lambda m=mod: showModDetails(m, modNameLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, gameVersion))
+		modButton = ttk.Button(modListScrollableFrame, text=mod["Mod Name"], command=lambda m=mod: showModDetails(m, modNameLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion))
 		modButton.pack(fill="x", pady=5)
 
-def showModDetails(mod, modNameLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, gameVersion):
-	global selected_mod
-	selected_mod = mod
+def loadModIcon(mod, modIconLabel):
+	iconURL = f"{mod['Mod Manager Images Folder URL']}/icon.png"
+	iconImage = downloadImage(iconURL)
+	if iconImage != None:
+		modIconLabel.config(image=iconImage)
+		modIconLabel.image = iconImage
+	else:
+		modIconLabel.config(image="", text="No Icon Found")
+		modIconLabel.image = None
+
+def showModDetails(mod, modNameLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion):
+	global selectedMod
+	selectedMod = mod
 	modNameLabel.config(text=mod["Mod Name"])
 	modDescriptionLabel.config(text=mod["Mod Description"])
-	installedVersionLabel.config(text=f"Installed Mod Version: {getInstalledModVersion(mod['Mod ID'])}")
-	latestVersionLabel.config(text=f"Latest Mod Version: {mod['Mod Version']}")
+	installedVersionLabel.config(text=f"Installed Mod Version: {getInstalledModVersion(mod["Mod ID"])}")
+	latestVersionLabel.config(text=f"Latest Mod Version: {mod["Mod Version"]}")
 	installedGameVersionLabel.config(text=f"Installed Game Version: {gameVersion}")
-	modGameVersionLabel.config(text=f"Mod Game Version: {mod['Mod Game Version']}")
+	modGameVersionLabel.config(text=f"Mod Target Version {mod["Mod Game Version"]}")
+	loadModIcon(selectedMod, modIconLabel)
 
 	# TODO: Load and display screenshots	
 def downloadImage(url):
@@ -126,10 +136,11 @@ def downloadImage(url):
 		print(f"Error downloading image: {e}")
 		return None
 
-def getInstalledModVersion(mod_id):
-	# TODO
-	# This function should check if the mod is installed and return its version
-	...
+def getInstalledModVersion(modID):
+	if modID in installedMods:
+		return installedMods[modID]
+	else:
+		return "Mod Not Installed"
 
 def downloadSelectedMod():
 	...
@@ -155,74 +166,74 @@ def downloadFile(url, filename, downloadLocation):
 	response = requests.get(url, stream=True)
 	if devMode: print(url)
 	if response.status_code == 200:
-		file_path = os.path.join(downloadLocation, filename)
-		with open(file_path, "wb") as file:
+		filePath = os.path.join(downloadLocation, filename)
+		with open(filePath, "wb") as file:
 			for chunk in response.iter_content(chunk_size=8192):
 				file.write(chunk)
 		if devMode: print(f"Downloaded: {filename}")
 	else:
 		if devMode: print(f"Failed to download: {filename} (Status Code: {response.status_code})")
 
-def loadMods(json_file_path, json_url="https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"):
+def loadMods(jsonFilePath, jsonURL="https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"):
 	"""Fetch the JSON file, parse it, and download the mods."""
 	modlistData = []
 	try:
-		if not os.path.exists(json_file_path) or json_file_path == "":
-			response = requests.get(json_url)
+		if not os.path.exists(jsonFilePath) or jsonFilePath == "":
+			response = requests.get(jsonURL)
 			response.raise_for_status() # Raise an error for bad status codes
 			data = response.json()
 		else:
 			# assume it"s a testing environment and override online download
-			with open(json_file_path, "r") as file:
+			with open(jsonFilePath, "r") as file:
 				data = json.load(file)
 
 		# Get the base assets URL
-		assets_url = data.get("assetsURL", "")
-		if not assets_url:
+		assetsURL = data.get("assetsURL", "")
+		if not assetsURL:
 			print("Error: \"assetsURL\" not found in JSON.")
 			return
 
 		# Iterate through the mods and download them
-		for mod_id, modData in data.items():
-			if mod_id == "assetsURL":
+		for modID, modData in data.items():
+			if modID == "assetsURL":
 				continue # Skip the assetsURL entry
 
-			file_name = modData.get("FileName", "")
-			mod_name = modData.get("Name")
-			mod_version = modData.get("Version", "1.0")
-			mod_game_version = modData.get("GameVersion", "")
-			mod_description = modData.get("Description", "")
-			if not file_name:
-				print(f"Skipping mod {mod_id}: No \"FileName\" specified.")
+			FileName = modData.get("FileName", "")
+			modName = modData.get("Name")
+			modVersion = modData.get("Version", "1.0")
+			modGameVersion = modData.get("GameVersion", "")
+			modDescription = modData.get("Description", "")
+			if not FileName:
+				print(f"Skipping mod {modID}: No \"FileName\" specified.")
 				continue
 
-			if assets_url.endswith("/"):
-				file_url = f"{assets_url}{file_name}"
-				screenshots_url = f"{assets_url}{mod_id}"
+			if assetsURL.endswith("/"):
+				fileURL = f"{assetsURL}{FileName}"
+				screenshotsURL = f"{assetsURL}{modID}"
 			else:
-				file_url = f"{assets_url}/{file_name}"
-				screenshots_url = f"{assets_url}/{mod_id}"
-
-			print("------------------------")
-			print(f"File URL: {file_url}")
-			print(f"File Name: {file_name}")
-			print(f"Mod ID: {mod_id}")
-			print(f"Mod Name: {mod_name}")
-			print(f"Mod Version: {mod_version}")
-			print(f"Mod Game Version: {mod_game_version}")
-			print(f"Mod Description: {mod_description}")
-			print(f"Mod Manager Images Folder URL: {screenshots_url}")
-			print("------------------------")
+				fileURL = f"{assetsURL}/{FileName}"
+				screenshotsURL = f"{assetsURL}/{modID}"
+			if devMode and showOutput:
+				print("------------------------")
+				print(f"File URL: {fileURL}")
+				print(f"File Name: {FileName}")
+				print(f"Mod ID: {modID}")
+				print(f"Mod Name: {modName}")
+				print(f"Mod Version: {modVersion}")
+				print(f"Mod Game Version: {modGameVersion}")
+				print(f"Mod Description: {modDescription}")
+				print(f"Mod Manager Images Folder URL: {screenshotsURL}")
+				print("------------------------")
 
 			modlistData.append({
-				"File URL": file_url,
-				"File Name": file_name,
-				"Mod ID": mod_id,
-				"Mod Name": mod_name,
-				"Mod Version": mod_version,
-				"Mod Game Version": mod_game_version,
-				"Mod Description": mod_description,
-				"Mod Manager Images Folder URL": screenshots_url
+				"File URL": fileURL,
+				"File Name": FileName,
+				"Mod ID": modID,
+				"Mod Name": modName,
+				"Mod Version": modVersion,
+				"Mod Game Version": modGameVersion,
+				"Mod Description": modDescription,
+				"Mod Manager Images Folder URL": screenshotsURL
 			})
 	except requests.exceptions.RequestException as e:
 		print(f"Error fetching JSON: {e}")
