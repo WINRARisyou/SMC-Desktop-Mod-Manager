@@ -174,14 +174,15 @@ def loadMods(jsonFilePath, jsonURL="https://winrarisyou.github.io/SMC-Desktop-Mo
 	"""Fetch the JSON file, parse it, and download the mods."""
 	modlistData = []
 	try:
-		if not os.path.exists(jsonFilePath) or jsonFilePath == "":
+		if jsonFilePath != None:
+			# assume it's a testing environment and override online download
+			if os.path.exists(jsonFilePath):
+				with open(jsonFilePath, "r") as file:
+					data = json.load(file)
+		else:
 			response = requests.get(jsonURL)
 			response.raise_for_status() # Raise an error for bad status codes
 			data = response.json()
-		else:
-			# assume it's a testing environment and override online download
-			with open(jsonFilePath, "r") as file:
-				data = json.load(file)
 
 		# Get the base assets URL
 		assetsURL = data.get("assetsURL", "")

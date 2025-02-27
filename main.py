@@ -3,7 +3,7 @@
 ### DEFS ###
 devMode = True
 global managerVersion
-managerVersion = "1.0.3ALPHA-3"
+managerVersion = "1.0.3ALPHA-5"
 import atexit
 import ctypes
 import json
@@ -911,7 +911,8 @@ getLatestVersion()
 ## /GUI ##
 ## ONLINE MOD LIST ##
 jsonURL = "https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"
-if devMode: jsonFilePath = "tests/downloadtest/modlist.json"
+if devMode: jsonFilePath = "tests/downloadtest/modlist.json "
+else: jsonFilePath = None
 
 onlineModList.downloadLocation = modsPath
 installedMods = {}
