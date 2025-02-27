@@ -3,7 +3,7 @@
 ### DEFS ###
 devMode = True
 global managerVersion
-managerVersion = "1.0.3ALPHA-5"
+managerVersion = "1.0.3BETA-1"
 import atexit
 import ctypes
 import json
@@ -20,7 +20,7 @@ from tkinter import filedialog, messagebox, ttk
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from zipfile import ZipFile
 import webbrowser
-from modules import onlineModList, aboutWindow, resourcePath as resPath
+from modules import onlineModList, aboutWindow, resourcePath as resPath, tooltip
 
 global onWindows
 onWindows = platform.system() == "Windows"
@@ -44,6 +44,8 @@ os.mkdir(os.path.join(temp_dir, "Unmodified Game Files"))
 ### GLOBALS ###
 global allModVersions
 allModVersions = {}
+global criticallyOutated
+criticallyOutated = False
 global gamePath
 gamePath = None
 global gameVersion
@@ -60,10 +62,10 @@ global modifiedFiles
 modifiedFiles = {}
 global modVars
 modVars = {}
-global SelectedMod
-SelectedMod = None
-global settings
-settings = None
+global SelectedMod, settings
+SelectedMod = settings = None
+global updateType
+updateType = None
 global winWidth, winHeight
 winWidth = winHeight = 0
 ### /GLOBALS ###
@@ -530,7 +532,26 @@ def getLatestVersion():
 	managerVersionInt = int(managerVersion.replace(".", ""))
 	
 	def askMsg():
-		msg = messagebox.askyesno("Update Available", f"An update is available for the mod manager.\nCurrent version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
+		msg = None
+		match updateType:
+			case "normal":
+				msg = messagebox.askyesno("Update Available", f"An update is available.\nInstalled version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
+			case "bugfix":
+				msg = messagebox.askyesno("Update Available", f"A bugfix update is available.\nInstalled version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
+			case "critical":
+				msg = messagebox.askyesno("Update Available", f"A CRITICAL update is available. It fixes severe issues and playing on your version could have major issues.\nInstalled version: {managerVersion}\nLatest version: {latestManagerVersion}\nPlease download the update.", icon="warning")
+				if msg:
+					webbrowser.open("https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/releases/latest")
+				else:
+					if messagebox.askyesno("", "Are you sure you want to continue?", icon="warning"):
+						global criticallyOutated
+						criticallyOutated = True
+					else:
+						askMsg()
+						return
+			case _:
+				msg = messagebox.askyesno("Update Available", f"An update is available.\nInstalled version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
+		#msg = messagebox.askyesno("Update Available", f"An update is available for the mod manager.\nCurrent version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
 		if msg:
 			webbrowser.open("https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/releases/latest")
 
@@ -887,9 +908,12 @@ createModList(sortedMods)
 gameVersion = getInstalledGameVersion()
 
 latestGameVersion = makeWebRequest("https://levelsharesquare.com/api/accesspoint/gameversion/SMC", 5, "Could not get latest game version")
-if type(latestGameVersion) != str: latestGameVersion = latestGameVersion.json().get("version")
+if type(latestGameVersion) != str: latestGameVersion = latestGameVersion.json().get("version") 
 
 latestManagerVersion = makeWebRequest("https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/current_version.json", 10, "Could not get latest mod manager version")
+#latestManagerVersion = {"version": "1.0.2.1", "updateType": "critical"}
+updateType = None
+if type(latestManagerVersion) != str: updateType = latestManagerVersion.json().get("updateType")
 if type(latestManagerVersion) != str: latestManagerVersion = latestManagerVersion.json().get("version")
 
 global gameVersionLabel
@@ -908,6 +932,10 @@ latestManagerVersionLabel = tk.Label(managerFrame, text=f"Latest Mod Manager Ver
 latestManagerVersionLabel.pack(pady=0, anchor="e")
 
 getLatestVersion()
+
+if criticallyOutated:
+	managerVersionLabel.config(fg="red")
+	tooltip.Tooltip(managerVersionLabel, bg=window.cget("bg"), text="You are critically out of date. Please update the mod manager.", borderColor="black", borderWidth=1, wraplength=270)
 ## /GUI ##
 ## ONLINE MOD LIST ##
 jsonURL = "https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"
