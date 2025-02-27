@@ -337,8 +337,7 @@ def restoreGameFiles():
 
 def runGame():
 	gameExecutable = None
-	global onWindows
-	global refreshButton
+	global onWindows, refreshButton
 	if onWindows:
 		gameExecutable = os.path.join(gamePath, "Super Mario Construct.exe")
 	else:
@@ -685,11 +684,15 @@ def createModList(sortedMods):
 	frame.pack(fill="x", pady=2)
 
 	# listbox to display mods
-	modListbox = tk.Listbox(frame, width=50, height=10, activestyle="dotbox")
+	modListScrollbar = ttk.Scrollbar(frame, orient="vertical")
+	modListbox = tk.Listbox(frame, width=50, height=10, activestyle="dotbox", yscrollcommand=modListScrollbar.set)
 	modListbox.pack(side="left", padx=5)
 
 	modListbox.drop_target_register(DND_FILES)
 	modListbox.dnd_bind('<<Drop>>', handleFileDrop)
+
+	modListScrollbar.pack(side="left", fill="y")
+	modListScrollbar.config(command=modListbox.yview)
 
 	# frame for buttons
 	buttonFrame = tk.Frame(frame)
@@ -839,6 +842,12 @@ def createModList(sortedMods):
 				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')} (Priority: {modData['Priority']})")
 			else:
 				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')}")
+		if not modListbox.size() > 10:
+			modListScrollbar.pack_forget()
+			modListbox.config(width=50)
+		else:
+			modListScrollbar.pack(after=modListbox)
+			modListbox.config(width=47)
 
 	# Bind selection event to update mod info label
 	modListbox.bind("<<ListboxSelect>>", onModSelect)
@@ -860,6 +869,13 @@ def createModList(sortedMods):
 
 	# Initialize the mod list
 	updateModList()
+
+	# Check if the mods list can be scrolled
+	if not modListbox.size() > 10:
+		modListScrollbar.pack_forget()
+	else:
+		modListbox.config(width=47)
+		
 # Label to show mod info on click
 modInfoLabel = tk.Label(window, text="", justify="left")
 modInfoLabel.pack_forget()
