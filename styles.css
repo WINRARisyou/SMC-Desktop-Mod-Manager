@@ -8,6 +8,7 @@ html {
 	margin: 0px;
 	padding: 0px;
 }
+
 body {
 	font-family: "Google Sans", Arial, sans-serif;
 	line-height: 1.6;
@@ -16,6 +17,8 @@ body {
 }
 
 code {
+	font-size: 0.875rem !important;
+	font-family: "Google Sans" !important; 
 	background-color: #f4f4f4;
 	border: 1px solid #ddd;
 	border-radius: 5px;	
@@ -73,7 +76,7 @@ header h1 {
 }
 
 h1, h2 {
-	color: #5a5af0;
+	color: #5a5acf;
 	padding: 0px;
 }
 

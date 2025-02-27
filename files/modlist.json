@@ -1,0 +1,11 @@
+{
+	"assetsURL": "https://archive.org/download/SMC-DMM-Mods/",
+	"theflyingdutchman.spaghbettle": {
+		"FileName": "spaghbettle.zip",
+		"Version": "1.0",
+		"GameAbbreviation": "SMC",
+		"GameVersion": "v8.beta29.6",
+		"Description": "Mod replaces all bony beetles with spaghbettles (AKA pastabeetle) in both gamestyles of Super Mario Construct.",
+		"Name": "Spaghbettle"
+	}
+}
