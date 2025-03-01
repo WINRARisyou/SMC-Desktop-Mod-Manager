@@ -656,7 +656,7 @@ window.minsize(480, 480)
 window.bind("<Configure>", windowResized)
 
 window.iconphoto(True, tk.PhotoImage(file=resPath.resource_path("icons/icon-512.png")))
-window.title("SMC Desktop Mod Loader")
+window.title("SMC Desktop Mod Manager")
 window.geometry(f"{winWidth}x{winHeight}")
 
 # Create menu bar
