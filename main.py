@@ -3,7 +3,7 @@
 ### DEFS ###
 devMode = True
 global managerVersion
-managerVersion = "1.0.3BETA-1"
+managerVersion = "1.1.0BETA-0"
 import atexit
 import ctypes
 import json
@@ -36,6 +36,9 @@ def onExit():
 	# Save window size
 	with open("settings.json", "w") as f:
 		json.dump(settings, f, indent="\t")
+	# nuke modifiedFiles.json
+	if os.path.exists(os.path.join(gamePath, "modifiedFiles.json")):
+		os.remove(os.path.join(gamePath, "modifiedFiles.json"))
 
 atexit.register(onExit)
 temp_dir = tempfile.mkdtemp()
@@ -52,6 +55,8 @@ global gameVersion
 gameVersion = None
 global latestGameVersion, latestManagerVersion
 latestGameVersion = latestManagerVersion = None
+global installedMods
+installedMods = {}
 global mods_json_path
 mods_json_path = None
 global modsPath
@@ -77,7 +82,7 @@ def backupOriginalFile(gameFilesPath, unmodifiedFilePath):
 		if not os.path.exists(unmodifiedFilePath):
 			shutil.copy(gameFilesPath, unmodifiedFilePath)
 	else:
-		# If the game file or directory doesn't exist, mark it for deletion when the game is closed
+		# If the game file doesn't exist, mark it for deletion when the game is closed
 		print(f"Marking {gameFilesPath} for deletion")
 		if not os.path.isdir(gameFilesPath):
 			modFiles.append(gameFilesPath)
@@ -98,6 +103,39 @@ def copyModFile():
 			else:
 				print("Invalid file type. Please select a .zip file.")
 				messagebox.showerror("Error", "Invalid file type. Please select a .zip file.")
+
+def crashDetection():
+	if os.path.exists(os.path.join(gamePath, "modifiedFiles.json")):
+		with open(os.path.join(gamePath, "modifiedFiles.json"), "r") as file:
+			modifiedFiles = json.load(file)
+
+			# remove the pyinstaller directory if compiled
+			if "_MEIPASS" in modifiedFiles and os.path.exists(modifiedFiles["_MEIPASS"]):
+				shutil.rmtree(modifiedFiles["_MEIPASS"])
+				
+			oldTempDir = modifiedFiles["oldTempDir"]
+
+			# delete any lingering mod files
+			for modFile in modifiedFiles["modFiles"]:
+				if devMode: print(os.path.join(gamePath, "www", modFile))
+				if os.path.exists(os.path.join(gamePath, "www", modFile)):
+					if os.path.isdir(os.path.join(gamePath, "www", modFile)):
+						shutil.rmtree(os.path.join(gamePath, "www", modFile))
+					else:
+						os.remove(os.path.join(gamePath, "www", modFile))
+
+			# copy unmodified files back, otherwise warn user that files couldn't be recovered
+			if os.path.exists(oldTempDir):
+				for gameFile in modifiedFiles["gameFiles"]:
+					if devMode: print(os.path.join(oldTempDir, "Unmodified Game Files", gameFile))
+					if devMode: print(os.path.join(gamePath, "www", gameFile))
+					shutil.copy2(os.path.join(oldTempDir, "Unmodified Game Files", gameFile), os.path.join(gamePath, "www", gameFile))
+				shutil.rmtree(oldTempDir)
+				messagebox.showinfo("Crashed last exit", "SMC-DMM crashed the last time it ran, and it has detected some corrupted game files.\nIt has attempted crash recovery, but everything may not have been fixed.\nPlease launch without mods, and if everything is normal, then continue on with your day. Otherwise, you will need to redownload SMC (your levels will stay intact).")
+			else:
+				messagebox.showwarning("Crashed last exit", "SMC-DMM crashed the last time it ran, and it has detected some corrupted game files.\nIt has attempted crash recovery, but some game files could not be recovered.\nYou will need to redownload SMC to fix any files that mods changed (your levels will stay intact).")
+		if os.path.exists(os.path.join(gamePath, "modifiedFiles.json")):
+			os.remove(os.path.join(gamePath, "modifiedFiles.json"))
 
 def makeWebRequest(url: str, timeout: int, exceptionText: str):
 	"""
@@ -201,6 +239,24 @@ def processFile(modID, modPriority, root, file, assetsPath):
 		if devMode: print(f"{modID} (Priority: {modPriority}) replaced {gameFilesPath}")
 	else:
 		if devMode:	print(f"Skipping {modFilePath} because a higher-priority mod ({previousModPriority}) already modified it.")
+	
+	moddedFiles = []
+	for path in modFiles:
+		moddedFiles.append(os.path.relpath(os.path.join(path), os.path.join(gamePath, "www")))
+	
+	gameFiles = []
+	for path in modifiedFiles:
+		if not path in moddedFiles:
+			gameFiles.append(path)
+
+	with open(os.path.join(gamePath, "modifiedFiles.json"), "w"):
+		if getattr(sys, 'frozen', False):
+			pyinstallerPath = sys._MEIPASS
+			with open(os.path.join(gamePath, "modifiedFiles.json"), "w") as f:
+				json.dump({"_MEIPASS": pyinstallerPath, "oldTempDir": temp_dir, "modFiles": moddedFiles, "gameFiles": gameFiles}, f, indent="\t")
+		else:
+			with open(os.path.join(gamePath, "modifiedFiles.json"), "w") as f:
+				json.dump({"oldTempDir": temp_dir, "modFiles": moddedFiles, "gameFiles": gameFiles}, f, indent="\t")
 
 def readSettingsJSON():
 	global gamePath, settings, mods_json_path, modsPath, winWidth, winHeight
@@ -237,7 +293,7 @@ def readSettingsJSON():
 
 def refreshModsConfig():
 	"""Refresh mods.json by unpacking zip files and reading their mod.json."""
-	global modifiedFiles, modsConfig, modVars
+	global installedMods, modifiedFiles, modsConfig, modVars
 	modVars = {modID: tk.BooleanVar(value=modData.get("Enabled", False)) for modID, modData in sortModsByPriority(modsConfig)}
 	oldModsConfig = modsConfig.copy()
 	
@@ -298,18 +354,22 @@ def refreshModsConfig():
 	createModList(sortedMods)
 	
 	# Clear the temp folder
-	# Clear the contents of temp_dir without deleting the directory itself
+	# Clear the contents of temp_dir without deleting the directory itself or Unmodified Game Files
 	for item in os.listdir(temp_dir):
 		item_path = os.path.join(temp_dir, item)
 		if os.path.isfile(item_path) or os.path.islink(item_path):
-			os.unlink(item_path)
+			os.remove(item_path)
 		elif os.path.isdir(item_path):
 			if not item_path.endswith("Unmodified Game Files"):
 				shutil.rmtree(item_path)
+	installedMods = {}
+	for modID in modsConfig:
+		installedMods[modID] = modsConfig[modID]["Version"]
+	onlineModList.installedMods = installedMods
 
 	if devMode:
 		print("Mods configuration refreshed.")
-
+onlineModList.refreshModsConfig = refreshModsConfig
 def restoreGameFiles():
 	"""Restores original game files"""
 	for file in modFiles[:]:
@@ -336,6 +396,8 @@ def restoreGameFiles():
 	# Clear modifiedFiles when game is closed. Fixes issue #3
 	global modifiedFiles
 	modifiedFiles = {}
+	if os.path.exists(os.path.join(gamePath, "modifiedFiles.json")):
+		os.remove(os.path.join(gamePath, "modifiedFiles.json"))
 
 def runGame():
 	gameExecutable = None
@@ -538,7 +600,7 @@ def getLatestVersion():
 				msg = messagebox.askyesno("Update Available", f"An update is available.\nInstalled version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
 			case "bugfix":
 				msg = messagebox.askyesno("Update Available", f"A bugfix update is available.\nInstalled version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
-			case "critical":
+			case "critical": # hope to never have to use this one
 				msg = messagebox.askyesno("Update Available", f"A CRITICAL update is available. It fixes severe issues and playing on your version could have major issues.\nInstalled version: {managerVersion}\nLatest version: {latestManagerVersion}\nPlease download the update.", icon="warning")
 				if msg:
 					webbrowser.open("https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/releases/latest")
@@ -943,14 +1005,13 @@ if devMode: jsonFilePath = "tests/downloadtest/modlist.json "
 else: jsonFilePath = None
 
 onlineModList.downloadLocation = modsPath
-installedMods = {}
 for modID in modsConfig:
 	installedMods[modID] = modsConfig[modID]["Version"]
 onlineModList.installedMods = installedMods
 onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
 ## /ONLINE MOD LIST ##
 
-
+crashDetection()
 
 ### Run it!!1!
 window.update()

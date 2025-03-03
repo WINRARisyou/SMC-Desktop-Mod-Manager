@@ -13,6 +13,7 @@ onWindows = None
 installedMods = None
 selectedMod = None
 showOutput = False
+refreshModsConfig = None
 ### /DEFS ###
 ### FUNCTIONS
 def createWindow(baseWindow, gameVersion, modlistData):
@@ -129,9 +130,13 @@ def downloadMod(mod, gameVersion):
 				warning = messagebox.askyesno("Warning", "The mod game version does not match the installed game version. Do you want to continue?")
 				if not warning:
 					return
-
-	downloadFile(mod["File URL"], mod["File Name"], downloadLocation)
+	try:
+		downloadFile(mod["File URL"], mod["File Name"], downloadLocation)
+	except Exception as err:
+		messagebox.showerror("Download Failure", "An error occured and the mod couldn't be downloaded. Sorry!")
+		return
 	messagebox.showinfo("Success", f"Mod {mod["Mod Name"]} downloaded successfully!")
+	refreshModsConfig()
 
 def getInstalledModVersion(modID):
 	if modID in installedMods:
