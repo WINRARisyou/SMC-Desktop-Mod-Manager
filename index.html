@@ -11,10 +11,16 @@
 		<h1>SMC Desktop Mod Manager</h1>
 		<img class="logo" src="files/images/icon-256.ico"/>
 	</header>
+	<script src="files/script/script.js"></script>
+	<script src="files/script/modlist.js"></script>
 </head>
 
 <body>
-	<div class="main">
+	<div class="tabs">
+		<div class="tab active" onclick="showTab('main')">Setup Guide</div>
+		<div class="tab" onclick="showTab('online-mod-list')">Mod List</div>
+	</div>
+	<div id="main" class="tab-content active">
 		<section>
 			<h2>Introduction</h2>
 			<p>Welcome to the SMC Desktop Mod Manager. This tool helps you manage your mods for SMC efficiently.</p>
@@ -95,6 +101,10 @@
 				<li>Found a bug? <a href="https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/fork">Submit an Issue</a> to let me know.</li>
 			</ul>				
 		</section>
+	</div>
+	<div id="online-mod-list" class="tab-content">
+		<h1>Mod List</h1>
+		<div id="mod-list">Loading Mods...</div>
 	</div>
 	<small>WINRARisyou was here.</small>
 </body>

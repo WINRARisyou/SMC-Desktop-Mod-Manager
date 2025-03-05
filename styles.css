@@ -3,6 +3,11 @@
 	src: url("files/fonts/GoogleSans-Regular.ttf") format("truetype");
 }
 
+@font-face {
+	font-family: "Google Sans Medium";
+	src: url("files/fonts/GoogleSans-Medium.ttf") format("truetype");
+}
+
 html {
 	box-sizing: border-box;
 	margin: 0px;
@@ -61,6 +66,34 @@ header h1 {
 	transform: translateY(-50%);
 }
 
+.tabs {
+	margin-top: 10px;
+	display: flex;
+}
+
+.tab {
+	border-radius: 8px 8px 0 0;
+	cursor: pointer;
+	padding: 8px 10px 5px 10px;
+	border: 1px solid #cccccc;
+	border-bottom: none;
+	background-color: #f4f4f4;
+	margin-right: 1px;
+}
+
+.tab.active {
+	background-color: #ffffff;
+	border-bottom: 1px solid #ffffff;
+}
+
+.tab-content {
+	display: none;
+}
+
+.tab-content.active {
+	display: block;
+}
+
 .logo {
 	position: absolute;
 	top: 10.5px;
@@ -105,4 +138,58 @@ section>h2 {
 small:not(.ignoreSmall) {
 	font-size: 69%; /* hehe nice */
 	color: #777;
+}
+
+.mod-item {
+	line-height: normal;
+	position: relative;
+	background-color: #fff;
+	border-radius: 8px;
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+	padding: 15px;
+	margin-bottom: 10px;
+}
+
+.mod-item h3 {
+	font-family: "Google Sans Medium", Arial, sans-serif;
+	font-weight: 500;
+	margin: 8px;
+}
+
+.mod-item strong {
+	font-weight: normal;
+	font-family: "Google Sans Medium", Arial, sans-serif;
+}
+
+.mod-item p {
+	margin: 8px;
+}
+
+.mod-item button {
+	font-family: "Google Sans", Arial, sans-serif;
+	background-color: #90EE90;
+	border: none;
+	padding: 5px 8px;
+	border-radius: 4px;
+	cursor: pointer;
+}
+
+.mod-icon {
+	width: 64px;
+	height: 64px;
+	position: absolute;
+	top: 8px;
+	right: 8px;
+	text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+#mod-list {
+	max-width: 600px;
+	margin: 0 auto;
+}
+
+#online-mod-list h1 {
+	text-align: center;
 }
