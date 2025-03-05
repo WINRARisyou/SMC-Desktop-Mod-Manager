@@ -189,11 +189,35 @@ def loadMods(jsonFilePath, jsonURL="https://winrarisyou.github.io/SMC-Desktop-Mo
 			response.raise_for_status() # Raise an error for bad status codes
 			data = response.json()
 
-		# Get the base assets URL
-		assetsURL = data.get("assetsURL", "")
-		if not assetsURL:
+		# Get all the asset urls
+		assetsURL = None
+		assetURLs = data.get("assetsURL", [])
+		if not assetURLs:
 			print("Error: \"assetsURL\" not found in JSON.")
 			return
+		
+		def checkAssetURL(url):
+			try:
+				response = requests.get(url)
+				response.raise_for_status()
+				return url
+			except requests.exceptions.RequestException as e:
+				if devMode: print(f"Error fetching assets URL {url}: {e}")
+				return None
+		
+		for url in data.get("assetsURL", []):
+			result = checkAssetURL(url)
+
+			if result != None:
+				assetsURL = result
+				if devMode: print(f"Using asset URL: {assetsURL}")
+				break
+			else:
+				continue
+		if assetsURL == None:
+			if devMode: print("No valid asset url found :/")
+			messagebox.showerror("Error", "Could not access the online mod list at this time. Please try again later.")
+			return "cannotAccessModList"
 
 		# Iterate through the mods and download them
 		for modID, modData in data.items():
@@ -208,7 +232,7 @@ def loadMods(jsonFilePath, jsonURL="https://winrarisyou.github.io/SMC-Desktop-Mo
 			if not FileName:
 				print(f"Skipping mod {modID}: No \"FileName\" specified.")
 				continue
-
+			
 			if assetsURL.endswith("/"):
 				fileURL = f"{assetsURL}{FileName}"
 				screenshotsURL = f"{assetsURL}{modID}"

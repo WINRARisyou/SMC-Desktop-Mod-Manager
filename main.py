@@ -532,6 +532,7 @@ def updateModsConfig(modName, modData, fileName):
 	modsConfig[modID]["GameVersion"] = modData.get("GameVersion", modsConfig[modID].get("GameVersion", ""))
 	modsConfig[modID]["Description"] = modData.get("Description", modsConfig[modID].get("Description", ""))
 	modsConfig[modID]["Name"] = modName # Store the mod name for display purposes
+	modsConfig[modID]["Author"] = modData.get("Author", modsConfig[modID].get("Author", "Author Unknown"))
 	with open(mods_json_path, "w") as f:
 		print(mods_json_path)
 		json.dump(modsConfig, f, indent="\t")
@@ -825,8 +826,10 @@ def createModList(sortedMods):
 
 	# Mod info label inside the scrollable frame
 	global modInfoLabel
-	modInfoLabel = tk.Label(scrollable_frame, text="", justify="center", wraplength=200)
+	modInfoLabel = tk.Label(scrollable_frame, text="", justify="center", anchor="n")
+	modInfoLabel.bind("<Configure>", lambda e: modInfoLabel.config(wraplength=(modInfoLabel.winfo_width() - 10)))
 	modInfoLabel.pack(fill="both", expand=True)
+	scrollable_frame.pack(fill="both", expand=True)
 
 	# Store checkboxes' states
 	global modVars
@@ -922,9 +925,10 @@ def createModList(sortedMods):
 			modName = modData.get("Name") # Get the mod name for display
 			checked = "✅ " if modVars[modID].get() else "⬜ "
 			if devMode:
-				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')} (Priority: {modData['Priority']})")
+				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')} - {modData.get('Author', 'Author Unknown')} (Priority: {modData['Priority']})")
 			else:
-				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')}")
+				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')} - {modData.get('Author', 'Author Unknown')}")
+		# Check if the mods list can be scrolled
 		if not modListbox.size() > 10:
 			modListScrollbar.pack_forget()
 			modListbox.config(width=50)
@@ -1009,6 +1013,8 @@ for modID in modsConfig:
 	installedMods[modID] = modsConfig[modID]["Version"]
 onlineModList.installedMods = installedMods
 onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
+if onlineModData == "cannotAccessModList":
+	toolsMenuBar.entryconfig("Online Mod List", state="disabled")
 ## /ONLINE MOD LIST ##
 
 crashDetection()
