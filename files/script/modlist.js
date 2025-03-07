@@ -32,19 +32,15 @@ function displayMods(mods) {
 		const modItem = document.createElement('div');
 		modItem.className = 'mod-item';
 		let iconURL;
-		if (assetsURL.endsWith("/")) {
-			iconURL = `${assetsURL}/${mod.id}`;
-		} else {
-			iconURL = `${assetsURL}${mod.id}`;
-		}
+		assetsURL.endsWith("/") ? iconURL = `${assetsURL}${mod.id}` : iconURL = `${assetsURL}/${mod.id}`;	
 		let modContent = `
 			<h3>${sanatize(mod.name)}</h3>
 			<img class="mod-icon" src="${iconURL}/icon.png" alt="" />
-			<h3>Author: ${sanatize(mod.author)}</h3>
+			<h4>Author: ${sanatize(mod.author)}</h4>
 			<p><strong>Version:</strong> ${sanatize(mod.version)}</p>
 			<p><strong>Game Version:</strong> ${sanatize(mod.gameVersion)}</p>
 			<p><strong>Description:<br></strong>${sanatize(mod.description)}</p>
-			<button onclick="downloadMod('${sanatize(mod.filename)}')">Download</button>
+			<button onclick="downloadMod('${sanatize(mod.id)}/${sanatize(mod.filename)}')">Download</button>
 		`;
 
 		if (location.href.endsWith("github.dev/") || location.href.startsWith("http://localhost")) {
@@ -68,9 +64,9 @@ function downloadMod(filename) {
 
 	const downloadLink = document.createElement('a');
 	if (assetsURL.endsWith("/")) {
-		downloadLink.href = `${assetsURL}/${filename}`;
-	} else {
 		downloadLink.href = `${assetsURL}${filename}`;
+	} else {
+		downloadLink.href = `${assetsURL}/${filename}`;
 	}
 	downloadLink.download = filename;
 	downloadLink.click();

@@ -150,8 +150,9 @@ small:not(.ignoreSmall) {
 	margin-bottom: 10px;
 }
 
-.mod-item h3 {
+.mod-item h4 {
 	font-family: "Google Sans Medium", Arial, sans-serif;
+	font-size: 110%;
 	font-weight: 500;
 	margin: 8px;
 }

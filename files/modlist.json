@@ -3,28 +3,25 @@
 	"theflyingdutchman.spaghbettle": {
 		"FileName": "spaghbettle.zip",
 		"Version": "1.0",
-		"GameAbbreviation": "SMC",
 		"GameVersion": "v8.beta29.6",
 		"Description": "Mod replaces all bony beetles with spaghbettles (AKA pastabeetle) in both gamestyles of Super Mario Construct.",
 		"Name": "Spaghbettle",
 		"Author": "The Flying Dutchman"
 	},
-	"winrarisyou.touchcontrols": {
-		"FileName": "smc-touchcontrols.zip",
-		"Version": "1.1.0",
-		"GameAbbreviation": "SMC",
-		"GameVersion": "v8.beta*",
-		"Description": "Adds touch controls to Super Mario Construct.\nModified by The Flying Dutchman\nButtons made by Smuglutena",
-		"Name": "Touch Controls",
+	"winrarisyou.thxkey": {
+		"FileName": "thxkeymod.zip",
+		"Version": "v1",
+		"GameVersion": "v8.beta29.6",
+		"Description": "Changes the keyhole exit sound to the THX sound effect.",
+		"Name": "THX Key Sound",
 		"Author": "WINRARisyou"
 	},
 	"com.floog98.luigimoderemod": {
-		"FileName": "luigimode-floog.zip",
+		"FileName": "luigimode.zip",
 		"Version": "v4.0",
-		"Name": "Luigi Mode - DMM",
-		"Author": "floog98",
 		"GameVersion": "v8.beta29.6",
-		"AssetsFolder": "assets/SMC",
-		"Description": "A simple mod that replaces Mario with Luigi\n- Credits -\nNintendo - Regular Sprites\nfloog98 - Custom Sprites/Frames, and creating entire pack\nLinkstormZ - Hammer Luigi"
+		"Description": "A simple mod that replaces Mario with Luigi\n- Credits -\nNintendo - Regular Sprites\nfloog98 - Custom Sprites/Frames, and creating entire pack\nLinkstormZ - Hammer Luigi",
+		"Name": "Luigi Mode - DMM",
+		"Author": "floog98"
 	}
 }
