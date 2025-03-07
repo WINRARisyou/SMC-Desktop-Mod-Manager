@@ -49,6 +49,9 @@ def createWindow(baseWindow, gameVersion, modlistData):
 
 	modNameLabel = tk.Label(modDetailsFrame, text="No Mod Selected", font=("Arial", 12, "bold"))
 	modNameLabel.pack(anchor="w")
+	
+	modAuthorLabel = tk.Label(modDetailsFrame, text="No Mod Selected", font=("Arial", 10, "bold"))
+	modAuthorLabel.pack(anchor="w")
 
 	modDescriptionLabel = tk.Label(modDetailsFrame, text="No Mod Selected", wraplength=400, justify="left")
 	modDescriptionLabel.pack(anchor="w")
@@ -87,22 +90,24 @@ def createWindow(baseWindow, gameVersion, modlistData):
 	modListbox.bind(
 		"<<ListboxSelect>>", 
 		lambda e: 
-			onModSelect(modListbox, modlistData, modNameLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion),
+			onModSelect(modListbox, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion),
 			downloadButton.config(state="normal")
 	)
 
 def downloadFile(url, filename, downloadLocation):
 	"""Download a file from a URL and save it to the specified directory."""
 	response = requests.get(url, stream=True)
-	if devMode: print(url)
+	response.raise_for_status()
+	if devMode: print(f"Downloading mod from {url}")
 	if response.status_code == 200:
 		filePath = os.path.join(downloadLocation, filename)
 		with open(filePath, "wb") as file:
-			for chunk in response.iter_content(chunk_size=8192): # if y'all are crazy and have absurdly large images we're gonna need to have a talk
+			for chunk in response.iter_content(chunk_size=8192): # if y'all are crazy and have absurdly large mods (which is what this is for) we're gonna need to have a talk
 				file.write(chunk)
-		if devMode: print(f"Downloaded: {filename}")
+		if devMode: print(f"Downloaded: {filename} from {url}")
 	else:
-		if devMode: print(f"Failed to download: {filename} (Status Code: {response.status_code})")
+		if devMode: print(f"Failed to download: {filename} from {url} (Status Code: {response.status_code})")
+		raise Exception(f"Failed to download: {filename} from {url} (Status Code: {response.status_code})")
 
 def downloadImage(url):
 	try:
@@ -216,7 +221,6 @@ def loadMods(jsonFilePath, jsonURL="https://winrarisyou.github.io/SMC-Desktop-Mo
 				continue
 		if assetsURL == None:
 			if devMode: print("No valid asset url found :/")
-			messagebox.showerror("Error", "Could not access the online mod list at this time. Please try again later.")
 			return "cannotAccessModList"
 
 		# Iterate through the mods and download them
@@ -225,19 +229,20 @@ def loadMods(jsonFilePath, jsonURL="https://winrarisyou.github.io/SMC-Desktop-Mo
 				continue # Skip the assetsURL entry
 
 			FileName = modData.get("FileName", "")
-			modName = modData.get("Name")
-			modVersion = modData.get("Version", "1.0")
-			modGameVersion = modData.get("GameVersion", "")
-			modDescription = modData.get("Description", "")
+			modName = modData.get("Name", "Unnamed Mod")
+			modAuthor = modData.get("Author", "Unknown Author")
+			modVersion = modData.get("Version", "Unknown")
+			modGameVersion = modData.get("GameVersion", "Unknown")
+			modDescription = modData.get("Description", "No Description.")
 			if not FileName:
 				print(f"Skipping mod {modID}: No \"FileName\" specified.")
 				continue
 			
 			if assetsURL.endswith("/"):
-				fileURL = f"{assetsURL}{FileName}"
+				fileURL = f"{assetsURL}{modID}/{FileName}"
 				screenshotsURL = f"{assetsURL}{modID}"
 			else:
-				fileURL = f"{assetsURL}/{FileName}"
+				fileURL = f"{assetsURL}/{modID}/{FileName}"
 				screenshotsURL = f"{assetsURL}/{modID}"
 			if devMode and showOutput:
 				print("------------------------")
@@ -245,6 +250,7 @@ def loadMods(jsonFilePath, jsonURL="https://winrarisyou.github.io/SMC-Desktop-Mo
 				print(f"File Name: {FileName}")
 				print(f"Mod ID: {modID}")
 				print(f"Mod Name: {modName}")
+				print(f"Mod Author: {modAuthor}")
 				print(f"Mod Version: {modVersion}")
 				print(f"Mod Game Version: {modGameVersion}")
 				print(f"Mod Description: {modDescription}")
@@ -256,6 +262,7 @@ def loadMods(jsonFilePath, jsonURL="https://winrarisyou.github.io/SMC-Desktop-Mo
 				"File Name": FileName,
 				"Mod ID": modID,
 				"Mod Name": modName,
+				"Mod Author": modAuthor,
 				"Mod Version": modVersion,
 				"Mod Game Version": modGameVersion,
 				"Mod Description": modDescription,
@@ -267,16 +274,17 @@ def loadMods(jsonFilePath, jsonURL="https://winrarisyou.github.io/SMC-Desktop-Mo
 		print(f"Error parsing JSON: {e}")
 	return modlistData
 
-def onModSelect(modListbox, modlistData, modNameLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion):
+def onModSelect(modListbox, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion):
 	selectedIndex = modListbox.curselection()
 	if selectedIndex:
 		mod = modlistData[selectedIndex[0]]
-		showModDetails(mod, modNameLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion)
+		showModDetails(mod, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion)
 
-def showModDetails(mod, modNameLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion):
+def showModDetails(mod, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion):
 	global selectedMod
 	selectedMod = mod
 	modNameLabel.config(text=mod["Mod Name"])
+	modAuthorLabel.config(text=f"By: {mod["Mod Author"]}")
 	modDescriptionLabel.config(text=mod["Mod Description"])
 	installedVersionLabel.config(text=f"Installed Mod Version: {getInstalledModVersion(mod["Mod ID"])}")
 	latestVersionLabel.config(text=f"Latest Mod Version: {mod["Mod Version"]}")

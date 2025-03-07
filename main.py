@@ -146,7 +146,7 @@ def makeWebRequest(url: str, timeout: int, exceptionText: str):
 	"""
 	try:
 		response = requests.get(url, timeout=timeout)
-		if response == None:
+		if response == None or not response.ok:
 			return exceptionText
 		return response
 	except (requests.exceptions.Timeout, requests.exceptions.TooManyRedirects, requests.exceptions.ConnectionError, requests.exceptions.HTTPError,):
@@ -311,11 +311,8 @@ def refreshModsConfig():
 	# Assign priorities alphabetically (lower alphabetically, higher priority number)
 	for priority, item in enumerate(potential_mod_folders, start=1):
 		modFolderName = item
-
-		if not os.path.exists(os.path.join(modsPath, modFolderName, "mod.json")):
-			if devMode: print("Not a folder mod")
-		else:
-			if devMode: print("Mod found in folder!")
+		if os.path.exists(os.path.join(modsPath, modFolderName, "mod.json")):
+			if devMode: print(f"Mod found in folder {modFolderName}!")
 			modJSONPath = os.path.join(modsPath, modFolderName, "mod.json")
 			with open(modJSONPath, "r") as f:
 				modData = json.load(f)
@@ -336,7 +333,17 @@ def refreshModsConfig():
 			modJSONPath = os.path.join(temp_dir, modFolderName, "mod.json")
 			if os.path.exists(modJSONPath):
 				with open(modJSONPath, "r") as f:
-					modData = json.load(f)
+					try:
+						modData = json.load(f)
+					except json.JSONDecodeError as e:
+						if devMode: print(f"Error parsing {modJSONPath}: {e}")
+						messagebox.showerror("Parsing Error", f"Mod {modFolderName}.zip could not be parsed. Perhaps mod.json is malformed?")
+						continue
+					except Exception as e:
+						if devMode: print(f"Unexpected error: {e}")
+						if devMode: messagebox.showerror("Error", f"Unexpected error while reading mods.json:\n{e}")
+						else: messagebox.showerror("Error", "An unexpected error occured while parsing {modFolderName}.zip. It has been skipped.")
+						continue
 				modName = modData.get("Name")
 				modID = modData.get("ID") # Get the mod's ID
 				if modName and modID:
@@ -1012,6 +1019,7 @@ onlineModList.downloadLocation = modsPath
 for modID in modsConfig:
 	installedMods[modID] = modsConfig[modID]["Version"]
 onlineModList.installedMods = installedMods
+onlineModList.devMode = devMode
 onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
 if onlineModData == "cannotAccessModList":
 	toolsMenuBar.entryconfig("Online Mod List", state="disabled")

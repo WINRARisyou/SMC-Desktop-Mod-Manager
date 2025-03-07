@@ -4,3 +4,4 @@ dist/
 tests/
 settings.json
 __pycache__
+misc.txt

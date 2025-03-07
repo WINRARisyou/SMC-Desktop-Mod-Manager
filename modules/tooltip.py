@@ -6,11 +6,10 @@ class Tooltip:
 	"""
 	It creates a tooltip for a given widget as the mouse goes on it.
 
-	see:
+	See:
 
-	http://stackoverflow.com/questions/3221956/what-is-the-simplest-way-to-make-tooltips-in-tkinter/36221216#36221216
-
-	http://www.daniweb.com/programming/software-development/code/484591/a-tooltip-class-for-tkinter
+	- http://stackoverflow.com/questions/3221956/what-is-the-simplest-way-to-make-tooltips-in-tkinter/36221216#36221216
+	- http://www.daniweb.com/programming/software-development/code/484591/a-tooltip-class-for-tkinter
 
 	- Originally written by vegaseat on 2014.09.09.
 
@@ -18,25 +17,23 @@ class Tooltip:
 
 	- Modified
 		- to correct extreme right and extreme bottom behavior,
-		- to stay inside the screen whenever the tooltip might go out on
-		  the top but still the screen is higher than the tooltip,
+		- to stay inside the screen whenever the tooltip might go out on the top but still the screen is higher than the tooltip,
 		- to use the more flexible mouse positioning,
-		- to add customizable background color, padding, waittime and
-		  wraplength on creation
+		- to add customizable background color, padding, waittime and wraplength on creation
 		by Alberto Vassena on 2016.11.05.
-	  	- border width and color for the tooltip
+		- border width and color for the tooltip, along with doctext for the class
 		by WINRARisyou on 02/27/25
 
-	  Tested on Windows 11, running Python 3.13.1 64-bit
-
-		:param tk.Widget widget: The widget the tooltip should be applied to
-		:param str bg: The hex color or color name of the tooltip background
-		:param tuple pad: A tuple of four integers representing the padding (left, top, right, bottom) around the tooltip text, e.g. `(5, 3, 5, 3)`
-		:param str text: The text the tooltip should display
-		:param str borderColor: The hex color or color name of the tooltip border
-		:param int borderWidth: The width of the tooltip border
-		:param int waittime: The amount of time in milliseconds before the tooltip is displayed
-		:param int wraplength: The maximum line length in pixels
+	Tested on Windows 11, running Python 3.13.1 64-bit
+	
+	:param tk.Widget widget: The widget the tooltip should be applied to
+	:param str bg: The hex color or color name of the tooltip background
+	:param tuple pad: A tuple of four integers representing the padding (left, top, right, bottom) around the tooltip text, e.g. `(5, 3, 5, 3)`
+	:param str text: The text the tooltip should display
+	:param str borderColor: The hex color or color name of the tooltip border
+	:param int borderWidth: The width of the tooltip border
+	:param int waittime: The amount of time in milliseconds before the tooltip is displayed
+	:param int wraplength: The maximum line length in pixels
 	"""
 
 	def __init__(self, widget, bg="#FFFFEA", pad:tuple=(5, 3, 5, 3), text="Tooltip Text", borderColor:str=None, borderWidth=0, waittime=400, wraplength=250):
