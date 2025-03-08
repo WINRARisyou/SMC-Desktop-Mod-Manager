@@ -34,7 +34,15 @@ def onExit():
 		if os.path.exists(file):
 			os.remove(file)
 	# Save window size
+	global settings
+	winWidth = settings.get("Width")
+	winHeight = settings.get("Height")
+	settings = {}
+	with open("settings.json", "r") as f:
+		settings = json.load(f)
 	with open("settings.json", "w") as f:
+		settings["Width"] = winWidth
+		settings["Height"] = winHeight
 		json.dump(settings, f, indent="\t")
 	# nuke modifiedFiles.json
 	if os.path.exists(os.path.join(gamePath, "modifiedFiles.json")):
@@ -749,7 +757,7 @@ filesMenuBar.add_separator()
 filesMenuBar.add_command(label="Exit", command=window.quit)
 
 # Tools Menu
-toolsMenuBar.add_command(label="Online Mod List", command=lambda: onlineModList.createWindow(window, gameVersion, onlineModData))
+toolsMenuBar.add_command(label="Online Mod List", command=lambda: onlineModList.createWindow(onlineModList.parentWindow, gameVersion, onlineModData))
 toolsMenuBar.add_command(label="Refresh Mods", command=refreshModsConfig)
 if devMode:
 	toolsMenuBar.add_separator()
@@ -1012,9 +1020,10 @@ if criticallyOutated:
 ## /GUI ##
 ## ONLINE MOD LIST ##
 jsonURL = "https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"
-if devMode: jsonFilePath = "tests/downloadtest/modlist.json "
+if not devMode: jsonFilePath = "tests/downloadtest/modlist.json"
 else: jsonFilePath = None
 
+onlineModList.parentWindow = window
 onlineModList.downloadLocation = modsPath
 for modID in modsConfig:
 	installedMods[modID] = modsConfig[modID]["Version"]
@@ -1023,12 +1032,16 @@ onlineModList.devMode = devMode
 onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
 if onlineModData == "cannotAccessModList":
 	toolsMenuBar.entryconfig("Online Mod List", state="disabled")
-## /ONLINE MOD LIST ##
 
+
+## /ONLINE MOD LIST ##
 crashDetection()
 
+### REMOVE WHEN DONE TESTING ONLINE MOD LIST
+#onlineModList.createWindow(window, gameVersion, onlineModData)
 ### Run it!!1!
-window.update()
 window.mainloop()
+
+
 ### /MAIN ###
 ### WINRARisyou was here
