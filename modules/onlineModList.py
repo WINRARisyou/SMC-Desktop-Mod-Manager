@@ -337,7 +337,7 @@ def showModRepoDetails():
 		assetURL_Labels.append(tk.Label(repoInfo, text=f"Asset URL: {url}"))
 	for label in assetURL_Labels:
 		label.pack()
-	modRepoStatistics = requests.get(f"{assetsURL}/stat.json")
+	modRepoStatistics = requests.get(f"{assetsURL}/stats.json")
 	modRepoStatistics.raise_for_status()
 	modRepoStatistics = modRepoStatistics.json()
 	modRepoStatisticsLabels = []

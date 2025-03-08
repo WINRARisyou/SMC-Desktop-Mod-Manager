@@ -3,5 +3,6 @@ build/
 dist/
 tests/
 settings.json
+settings.bak
 __pycache__
 misc.txt
