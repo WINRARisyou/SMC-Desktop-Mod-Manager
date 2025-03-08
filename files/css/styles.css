@@ -1,11 +1,11 @@
 @font-face {
 	font-family: "Google Sans";
-	src: url("files/fonts/GoogleSans-Regular.ttf") format("truetype");
+	src: url("../fonts/GoogleSans-Regular.ttf") format("truetype");
 }
 
 @font-face {
 	font-family: "Google Sans Medium";
-	src: url("files/fonts/GoogleSans-Medium.ttf") format("truetype");
+	src: url("../fonts/GoogleSans-Medium.ttf") format("truetype");
 }
 
 html {
@@ -150,6 +150,10 @@ small:not(.ignoreSmall) {
 	margin-bottom: 10px;
 }
 
+.mod-item h3 {
+	margin-top: 0px;
+}
+
 .mod-item h4 {
 	font-family: "Google Sans Medium", Arial, sans-serif;
 	font-size: 110%;
@@ -193,4 +197,16 @@ small:not(.ignoreSmall) {
 
 #online-mod-list h1 {
 	text-align: center;
+}
+
+#submit-mod h1 {
+	text-align: center;
+	width: 100%;
+	height: 100%;
+}
+
+#submit-mod iframe {
+    width: 100%;
+    height: calc(100vh - 150px);
+    border: none;
 }
