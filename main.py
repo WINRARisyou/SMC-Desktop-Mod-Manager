@@ -3,7 +3,8 @@
 ### DEFS ###
 devMode = True
 global managerVersion
-managerVersion = "1.1.0BETA-0"
+managerVersion = "1.1.0RC-2"
+import argparse
 import atexit
 import ctypes
 import json
@@ -20,7 +21,8 @@ from tkinter import filedialog, messagebox, ttk
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from zipfile import ZipFile
 import webbrowser
-from modules import onlineModList, aboutWindow, resourcePath as resPath, tooltip
+from modules import *
+from modules import resourcePath as resPath
 
 global onWindows
 onWindows = platform.system() == "Windows"
@@ -51,6 +53,17 @@ def onExit():
 atexit.register(onExit)
 temp_dir = tempfile.mkdtemp()
 os.mkdir(os.path.join(temp_dir, "Unmodified Game Files"))
+
+# Create the main window
+window = TkinterDnD.Tk() #DnD stands for drag and drop
+parser = argparse.ArgumentParser()
+parser.add_argument('--debug', action='store_true', help='Enable separate console window')
+args = parser.parse_args()
+# Initialize debug window if requested
+if args.debug:
+	devMode = True
+	consoleWindow = debugWindow.DebugWindow(window)
+
 ### /DEFS ###
 ### GLOBALS ###
 global allModVersions
@@ -99,6 +112,7 @@ def bringWindowToFront():
 	window.attributes('-topmost', True)
 	window.after(10, lambda: window.focus_set())
 	window.after(11, lambda: window.attributes('-topmost', False))
+
 
 def copyModFile():
 	copyModFiles = filedialog.askopenfiles(title="Please select mod files")
@@ -155,9 +169,12 @@ def makeWebRequest(url: str, timeout: int, exceptionText: str):
 	try:
 		response = requests.get(url, timeout=timeout)
 		if response == None or not response.ok:
+			if devMode:
+				print(f"Request failed, response status code: {response.status_code}")
 			return exceptionText
 		return response
-	except (requests.exceptions.Timeout, requests.exceptions.TooManyRedirects, requests.exceptions.ConnectionError, requests.exceptions.HTTPError,):
+	except (requests.exceptions.Timeout, requests.exceptions.TooManyRedirects, requests.exceptions.ConnectionError, requests.exceptions.HTTPError) as e:
+		if devMode: print(f"Request failed, exception: {e}")
 		return exceptionText
 
 def openGameFolder():
@@ -599,7 +616,7 @@ def getInstalledGameVersion():
 		return "Game Version Not Found"
 
 def getLatestVersion():
-	keywordsToIgnore = ["beta", "dev", "pre-release", "pre_release", "alpha", "test", "b", "d", "pre", "a", "t"]
+	keywordsToIgnore = ["alpha", "beta", "dev", "pre-release", "pre_release", "release-candidate", "release_candidate", "test", "a", "b", "d", "pre", "rc", "t"]
 	for keyword in keywordsToIgnore:
 		if keyword in managerVersion.lower():
 			if devMode: print(f"Keyword: \"{keyword}\" found in version: {managerVersion}, not checking version")
@@ -725,15 +742,14 @@ def validateModsFolder(path):
 		return True
 ## /GET PATHS ##
 ## GUI ##
-# Create the main window
-window = TkinterDnD.Tk() #DnD stands for drag and drop
 
 # Set minimum window size
 window.minsize(480, 480)
-
 window.bind("<Configure>", windowResized)
 
-window.iconphoto(True, tk.PhotoImage(file=resPath.resource_path("icons/icon-512.png")))
+icon_path = resPath.resource_path("icons/icon-512.png")
+icon_image = tk.PhotoImage(file=icon_path) # Keep a reference
+window.iconphoto(True, icon_image)
 window.title("SMC Desktop Mod Manager")
 window.geometry(f"{winWidth}x{winHeight}")
 
@@ -1030,18 +1046,11 @@ for modID in modsConfig:
 onlineModList.installedMods = installedMods
 onlineModList.devMode = devMode
 onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
-if onlineModData == "cannotAccessModList":
+if onlineModData == "cannotAccessModList" or False:
 	toolsMenuBar.entryconfig("Online Mod List", state="disabled")
-
-
 ## /ONLINE MOD LIST ##
-crashDetection()
-
-### REMOVE WHEN DONE TESTING ONLINE MOD LIST
-#onlineModList.createWindow(window, gameVersion, onlineModData)
 ### Run it!!1!
+crashDetection()
 window.mainloop()
-
-
 ### /MAIN ###
 ### WINRARisyou was here

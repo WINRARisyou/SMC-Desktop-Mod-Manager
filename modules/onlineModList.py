@@ -25,9 +25,9 @@ selectedMod = None
 showOutput = False
 ### /DEFS ###
 ### FUNCTIONS
-def createWindow(baseWindow, gameVer, modlistData, customModRepo=None):
+def createWindow(baseWindow, gameVer, modlistData, customModRepo=False):
 	global onlineMods
-	onlineMods = subWindow.createSubWindow(baseWindow, "Online Mod List", "icons/icon-512.png", [890, 534]) # Create a sub-window
+	onlineMods = subWindow.createSubWindow(baseWindow, "Online mod list", "icons/icon-512.png", [890, 534]) # Create a sub-window
 	menuBar = tk.Menu(onlineMods)
 	onlineMods.config(menu=menuBar)
 
@@ -40,17 +40,18 @@ def createWindow(baseWindow, gameVer, modlistData, customModRepo=None):
 	addModRepo = tk.Menu(optionsMenuBar, tearoff=0)
 	optionsMenuBar.add_cascade(label="Customs", menu=addModRepo)
 
-	addModRepo.add_command(label="Custom mod list", command=lambda: createCustomModlist())
+	addModRepo.add_command(label="View custom mod repos", command=lambda: viewCustomModRepos())
+	addModRepo.add_command(label="Select custom mod repo", command=lambda: selectCustomModRepo())
 
 	global gameVersion
 	gameVersion = gameVer
 
 	# Left Panel: Mod List
-	modListFrame = tk.Frame(onlineMods)
-	modListFrame.pack(side="left", fill="y", padx=10, pady=10)
+	modlistFrame = tk.Frame(onlineMods)
+	modlistFrame.pack(side="left", fill="y", padx=10, pady=10)
 
-	modListScrollbar = ttk.Scrollbar(modListFrame, orient="vertical")
-	modListScrollbar.pack(side="right", fill="y")
+	modlistScrollbar = ttk.Scrollbar(modlistFrame, orient="vertical")
+	modlistScrollbar.pack(side="right", fill="y")
 
 	# TODO: Mod Screenshots
 	# Center: Screenshots
@@ -106,17 +107,17 @@ def createWindow(baseWindow, gameVer, modlistData, customModRepo=None):
 	downloadButton.pack(padx=0, pady=0, anchor="e")
 
 	# Populate Mod List
-	modListbox = tk.Listbox(modListFrame, width=25, yscrollcommand=modListScrollbar.set)
-	modListbox.pack(side="left", fill="both", expand=True)
-	modListScrollbar.config(command=modListbox.yview)
+	modlistbox = tk.Listbox(modlistFrame, width=25, yscrollcommand=modlistScrollbar.set)
+	modlistbox.pack(side="left", fill="both", expand=True)
+	modlistScrollbar.config(command=modlistbox.yview)
 
 	for mod in modlistData:
-		modListbox.insert(tk.END, mod["Mod Name"])
+		modlistbox.insert(tk.END, mod["Mod Name"])
 
-	modListbox.bind(
+	modlistbox.bind(
 		"<<ListboxSelect>>", 
 		lambda e: 
-			onModSelect(modListbox, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVer),
+			onModSelect(modlistbox, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVer),
 			downloadButton.config(state="normal")
 	)
 
@@ -207,7 +208,21 @@ def loadModIcon(mod, modIconLabel):
 	thread.start()
 
 def loadMods(jsonFilePath=None, jsonURL="https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"):
-	"""Fetch the JSON file, parse it, and download the mods."""
+	"""
+	Fetches the mod list from a JSON file and parses it.
+	
+	:param jsonFilePath str: The path to a local JSON file to use instead of fetching it online.
+	:param jsonURL str: The URL to a JSON file.
+
+	:excepts: requests.exceptions.RequestException, json.JSONDecodeError
+
+	:returns: A dictionary containing data from the mod list.
+	:rtype: dict
+	:returns "cannotAccessModList": If no valid asset URLs are in the mod list.
+	:rtype: str
+	:returns False: If an error occurs while fetching the JSON.
+	:rtype: bool
+	"""
 	modlistData = []
 	try:
 		if jsonFilePath != None:
@@ -297,15 +312,23 @@ def loadMods(jsonFilePath=None, jsonURL="https://winrarisyou.github.io/SMC-Deskt
 			})
 	except requests.exceptions.RequestException as e:
 		print(f"Error fetching JSON: {e}")
+		return False
 	except json.JSONDecodeError as e:
 		print(f"Error parsing JSON: {e}")
+		return False
 	return modlistData
 
-def onModSelect(modListbox, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion):
-	selectedIndex = modListbox.curselection()
+def onModSelect(modlistbox, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion):
+	selectedIndex = modlistbox.curselection()
 	if selectedIndex:
 		mod = modlistData[selectedIndex[0]]
 		showModDetails(mod, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion)
+
+def readSettings():
+	settingsPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "settings.json")
+	with open(settingsPath, "r") as f:
+		settings = json.load(f)
+		return(settings.get("Modlist"))
 
 def showModDetails(mod, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion):
 	global selectedMod
@@ -322,7 +345,7 @@ def showModDetails(mod, modNameLabel, modAuthorLabel, modDescriptionLabel, insta
 	loadModIcon(selectedMod, modIconLabel)
 
 def showModRepoDetails():
-	repoInfo = subWindow.createSubWindow(onlineMods, "Mod Repo Details", "icons/icon-512.png", [640, 360])
+	repoInfo = subWindow.createSubWindow(onlineMods, "Mod Repo Details", "icons/icon-512.png", [640, 190])
 	assetURLs = None
 	global assetsURL
 	if assetsURL.endswith("/"):
@@ -348,9 +371,88 @@ def showModRepoDetails():
 ### /FUNCTIONS ###
 
 ### SETTINGS ###
+def addToCombobox(selectedItem, combobox):
+	value = selectedItem.get()
+	if devMode: print("Selected value:", value)
+	if devMode: print(combobox.cget("values"))
+	comboboxValues = list(combobox.cget("values"))
+	if value not in comboboxValues:
+		comboboxValues.append(value)
+	else:
+		return
+	combobox.config(values=comboboxValues)
+	writeSettings(comboboxValues)
+
+def viewCustomModRepos():
+	selectedItem = tk.StringVar()
+	modlistWindow = subWindow.createSubWindow(onlineMods, "View custom mod lists", icon="icons/icon-512.png", size=[607, 38])
+	modRepoCombobox = ttk.Combobox(modlistWindow, textvariable=selectedItem, values=[], width=25)
+	
+	# get saved mod list urls
+	modlistSettings = readSettings()
+
+	if modlistSettings:
+		modRepoCombobox.config(values=modlistSettings.get("Custom Mod Repos", []))
+	if len(modRepoCombobox.cget("values")) >= 1:
+		modRepoCombobox.set(modRepoCombobox.cget("values")[0])
+	
+	modRepoCombobox.pack(side="left", anchor="w", padx=5)
+	addURLbutton = ttk.Button(modlistWindow, text="Add URL to list", command=lambda: addToCombobox(selectedItem, modRepoCombobox))
+	addURLbutton.pack(side="left", anchor="w")
+	removeURLbutton = ttk.Button(modlistWindow, text="Remove URL from list", command=lambda: removeFromCombobox(selectedItem, modRepoCombobox))
+	removeURLbutton.pack(side="left", anchor="w")
+
+def selectCustomModRepo():
+	selectedItem = tk.StringVar()
+	modlistWindow = subWindow.createSubWindow(onlineMods, "View custom mod lists", icon="icons/icon-512.png", size=[489, 38])
+	modRepoCombobox = ttk.Combobox(modlistWindow, textvariable=selectedItem, values=[], width=25)
+	
+	# get saved mod list urls
+	modlistSettings = readSettings()
+
+	if modlistSettings:
+		modRepoCombobox.config(values=modlistSettings.get("Custom Mod Repos", []))
+	if len(modRepoCombobox.cget("values")) >= 1:
+		modRepoCombobox.set(modRepoCombobox.cget("values")[0])
+
+	modRepoCombobox.pack(side="left", anchor="w", padx=5)
+	useSelectedModListbutton = ttk.Button(modlistWindow, text="Use selected mod repo", command=lambda: useCustomModRepo(modlistWindow, selectedItem, modRepoCombobox))
+	useSelectedModListbutton.pack(side="left", anchor="w")
+
+def removeFromCombobox(selectedItem, combobox):
+	value = selectedItem.get()
+	if devMode: print("Selected value:", value)
+	if devMode: print(combobox.cget("values"))
+	comboboxValues = list(combobox.cget("values"))
+	if value in comboboxValues:
+		comboboxValues.remove(value)
+	else:
+		return
+	combobox.config(values=comboboxValues)
+	if len(combobox.cget("values")) >= 1:
+		combobox.set(comboboxValues[0])
+	else:
+		combobox.set("")
+	writeSettings(comboboxValues)
+
+def useCustomModRepo(modlistWindow, selectedItem, combobox):
+	if len(combobox.cget("values")) < 1:
+		return
+	if devMode: print("using custom mod repo")
+	refreshModsConfig()
+	newModData = loadMods(None, f"{selectedItem.get()}/modlist.json")
+	if newModData == "cannotAccessModList":
+		messagebox.showerror("Error", "Cannot access mod list. Please check the URL and try again.")
+		return
+	if newModData == False:
+		messagebox.showerror("Error", "An error occured while fetching the mod list. Please try again later.")
+		return
+	modlistWindow.destroy()
+	onlineMods.destroy()
+	createWindow(parentWindow, gameVersion, newModData, True)
+
 def writeSettings(newSettings):
 	settingsPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "settings.json")
-	print(settingsPath)
 	settings = {}
 	with open(settingsPath, "r") as f:
 		settings = json.load(f)
@@ -360,46 +462,4 @@ def writeSettings(newSettings):
 			settings["Modlist"] = {}
 		settings["Modlist"]["Custom Mod Repos"] = newSettings
 		json.dump(settings, f, indent="\t")
-
-def addToCombobox(selectedItem, combobox):
-	value = selectedItem.get()
-	print("Selected value:", value)
-	print(combobox.cget("values"))
-	comboboxValues = list(combobox.cget("values"))
-	if value not in comboboxValues:
-		comboboxValues.append(value)
-	else:
-		return
-	combobox.config(values=comboboxValues)
-	writeSettings(comboboxValues)
-
-def useCustomModRepo(modlistWindow, selectedItem, combobox):
-	if len(combobox.cget("values")) < 1:
-		return
-	if devMode: print("using custom mod repo")
-	refreshModsConfig()
-	newModData = loadMods(None, f"{selectedItem.get()}/modlist.json")
-	modlistWindow.destroy()
-	onlineMods.destroy()
-	createWindow(parentWindow, gameVersion, newModData, True)
-
-def createCustomModlist():
-	modlistWindow = subWindow.createSubWindow(onlineMods, "View Custom Mod List", icon="icons/icon-512.png", size=[640, 360])
-	selectedItem = tk.StringVar()
-	modRepoCombobox = ttk.Combobox(modlistWindow, textvariable=selectedItem, values=[])
-	
-	# get saved mod list urls
-	settingsPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "settings.json")
-	with open(settingsPath, "r") as f:
-		settings = json.load(f)
-		modlistSettings = settings.get("Modlist")
-		if modlistSettings:
-			modRepoCombobox.config(values=modlistSettings.get("Custom Mod Repos", []))
-	if len(modRepoCombobox.cget("values")) >= 1:
-		modRepoCombobox.set(modRepoCombobox.cget("values")[0])
-	
-	modRepoCombobox.pack()
-	addURLbutton = ttk.Button(modlistWindow, text="Add URL to modlists", command=lambda: addToCombobox(selectedItem, modRepoCombobox))
-	addURLbutton.pack()
-	useSelectedModListbutton = ttk.Button(modlistWindow, text="Use selected mod list", command=lambda: useCustomModRepo(modlistWindow, selectedItem, modRepoCombobox))
-	useSelectedModListbutton.pack()
+### /SETTINGS ###
