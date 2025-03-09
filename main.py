@@ -3,7 +3,7 @@
 ### DEFS ###
 devMode = True
 global managerVersion
-managerVersion = "1.1.0RC-2"
+managerVersion = "1.1.0RC-3"
 import argparse
 import atexit
 import ctypes

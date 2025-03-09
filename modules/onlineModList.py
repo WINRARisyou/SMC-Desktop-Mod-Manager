@@ -6,7 +6,7 @@ import requests
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
-from . import createSubWindow as subWindow
+from . import createSubWindow as subWindow, tooltip
 global assetsURL
 assetsURL = None
 global gameVersion
@@ -36,6 +36,7 @@ def createWindow(baseWindow, gameVer, modlistData, customModRepo=False):
 
 	optionsMenuBar = tk.Menu(menuBar, tearoff=0)
 	menuBar.add_cascade(label="Options", menu=optionsMenuBar)
+	menuBar.add_command(label="Search", command=lambda: createSearchWindow(onlineMods, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel))
 
 	addModRepo = tk.Menu(optionsMenuBar, tearoff=0)
 	optionsMenuBar.add_cascade(label="Customs", menu=addModRepo)
@@ -107,19 +108,28 @@ def createWindow(baseWindow, gameVer, modlistData, customModRepo=False):
 	downloadButton.pack(padx=0, pady=0, anchor="e")
 
 	# Populate Mod List
-	modlistbox = tk.Listbox(modlistFrame, width=25, yscrollcommand=modlistScrollbar.set)
-	modlistbox.pack(side="left", fill="both", expand=True)
-	modlistScrollbar.config(command=modlistbox.yview)
+	modListbox = tk.Listbox(modlistFrame, width=25, yscrollcommand=modlistScrollbar.set)
+	modListbox.pack(side="left", fill="both", expand=True)
+	modlistScrollbar.config(command=modListbox.yview)
 
 	for mod in modlistData:
-		modlistbox.insert(tk.END, mod["Mod Name"])
+		modListbox.insert(tk.END, mod["Mod Name"])
 
-	modlistbox.bind(
+	modListbox.bind(
 		"<<ListboxSelect>>", 
 		lambda e: 
-			onModSelect(modlistbox, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVer),
+			onModSelect(modListbox, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVer),
 			downloadButton.config(state="normal")
 	)
+
+def createSearchWindow(parentWindow, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel):
+	searchWindow = subWindow.createSubWindow(parentWindow, "Search", "icons/icon-512.png", [400, 400])
+	searchEntry = ttk.Entry(searchWindow)
+	searchEntry.pack(side="top", fill="x", padx=10, pady=10)
+	searchResults = tk.Listbox(searchWindow, width=25)
+	searchResults.pack(side="top", fill="both", expand=True, padx=10, pady=10)
+	searchButton = ttk.Button(searchWindow, text="Search", command=lambda: searchMods(searchWindow, searchEntry.get(), searchResults, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel))
+	searchButton.pack(side="top", fill="x", padx=10, pady=10)
 
 def downloadFile(url, filename, downloadLocation):
 	"""Download a file from a URL and save it to the specified directory."""
@@ -318,8 +328,8 @@ def loadMods(jsonFilePath=None, jsonURL="https://winrarisyou.github.io/SMC-Deskt
 		return False
 	return modlistData
 
-def onModSelect(modlistbox, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion):
-	selectedIndex = modlistbox.curselection()
+def onModSelect(modListbox, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion):
+	selectedIndex = modListbox.curselection()
 	if selectedIndex:
 		mod = modlistData[selectedIndex[0]]
 		showModDetails(mod, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion)
@@ -329,6 +339,22 @@ def readSettings():
 	with open(settingsPath, "r") as f:
 		settings = json.load(f)
 		return(settings.get("Modlist"))
+
+def searchMods(searchWindow, searchTerm, searchResults, modlistData, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel):
+	filteredMods = []
+	searchResults.delete(0, tk.END)
+	def onModSelect(event):
+		selected = searchResults.curselection()
+		if selected:
+			mod = filteredMods[selected[0]]
+			showModDetails(mod, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion)
+			searchWindow.destroy()
+	
+	searchResults.bind("<Double-Button-1>", onModSelect)
+	for mod in modlistData:
+		if searchTerm.lower() in mod["Mod Name"].lower():
+			searchResults.insert(tk.END, mod["Mod Name"])
+			filteredMods.append(mod)
 
 def showModDetails(mod, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion):
 	global selectedMod
@@ -376,25 +402,44 @@ def addToCombobox(selectedItem, combobox):
 	if devMode: print("Selected value:", value)
 	if devMode: print(combobox.cget("values"))
 	comboboxValues = list(combobox.cget("values"))
-	if value not in comboboxValues:
-		comboboxValues.append(value)
+	if value not in [repo.split(" (")[1][:-1] for repo in comboboxValues]:
+		# Fetch the repository name from the URL
+		try:
+			response = requests.get(f"{value}/stats.json")
+			response.raise_for_status()
+			repo_info = response.json()
+			repo_name = repo_info.get("Mod Repo Name", "Unknown Repo")
+			comboboxValues.append(f"{repo_name} ({value})")
+		except requests.exceptions.RequestException as e:
+			messagebox.showerror("Error", f"Failed to fetch repository info: {e}")
+			return
 	else:
 		return
 	combobox.config(values=comboboxValues)
-	writeSettings(comboboxValues)
+	# this is a bit of a hacky way to get the URL and name, but it works
+	# repo.split(" (") splits the value at the parenthises, leaving an array with the repo name and url:
+	# ["repo name", "url)"]
+	# to get rid of the ")", repo.split(" (")[1][:-1] takes the second element of the array, and removes the last character from it
+	writeSettings([{"name": repo.split(" (")[0], "url": repo.split(" (")[1][:-1]} for repo in comboboxValues])
+	combobox.set(f"{repo_name} ({value})")
 
 def viewCustomModRepos():
 	selectedItem = tk.StringVar()
 	modlistWindow = subWindow.createSubWindow(onlineMods, "View custom mod lists", icon="icons/icon-512.png", size=[607, 38])
+	modlistWindow.resizable(False, False)
 	modRepoCombobox = ttk.Combobox(modlistWindow, textvariable=selectedItem, values=[], width=25)
-	
 	# get saved mod list urls
 	modlistSettings = readSettings()
 
 	if modlistSettings:
-		modRepoCombobox.config(values=modlistSettings.get("Custom Mod Repos", []))
+		modRepoCombobox.config(values=[f"{repo['name']} ({repo['url']})" for repo in modlistSettings.get("Custom Mod Repos", [])])
 	if len(modRepoCombobox.cget("values")) >= 1:
 		modRepoCombobox.set(modRepoCombobox.cget("values")[0])
+	
+	comboboxTooltip = tooltip.Tooltip(modRepoCombobox, bg=modlistWindow.cget("bg"), text=f"{selectedItem.get()}", borderColor="black", borderWidth=1, wraplength=-1)
+	def updateTooltip(*args): # for some reason it's spitting out 3 arguments, so *args is needed
+		comboboxTooltip.text = selectedItem.get()
+	selectedItem.trace_add("write", updateTooltip) # https://stackoverflow.com/a/44365434
 	
 	modRepoCombobox.pack(side="left", anchor="w", padx=5)
 	addURLbutton = ttk.Button(modlistWindow, text="Add URL to list", command=lambda: addToCombobox(selectedItem, modRepoCombobox))
@@ -405,13 +450,14 @@ def viewCustomModRepos():
 def selectCustomModRepo():
 	selectedItem = tk.StringVar()
 	modlistWindow = subWindow.createSubWindow(onlineMods, "View custom mod lists", icon="icons/icon-512.png", size=[489, 38])
+	modlistWindow.resizable(False, False)
 	modRepoCombobox = ttk.Combobox(modlistWindow, textvariable=selectedItem, values=[], width=25)
 	
 	# get saved mod list urls
 	modlistSettings = readSettings()
 
 	if modlistSettings:
-		modRepoCombobox.config(values=modlistSettings.get("Custom Mod Repos", []))
+		modRepoCombobox.config(values=[f"{repo['name']} ({repo['url']})" for repo in modlistSettings.get("Custom Mod Repos", [])])
 	if len(modRepoCombobox.cget("values")) >= 1:
 		modRepoCombobox.set(modRepoCombobox.cget("values")[0])
 
@@ -424,23 +470,24 @@ def removeFromCombobox(selectedItem, combobox):
 	if devMode: print("Selected value:", value)
 	if devMode: print(combobox.cget("values"))
 	comboboxValues = list(combobox.cget("values"))
-	if value in comboboxValues:
-		comboboxValues.remove(value)
-	else:
-		return
+	for repo in comboboxValues:
+		if repo == value:
+			comboboxValues.remove(repo)
+			break
 	combobox.config(values=comboboxValues)
 	if len(combobox.cget("values")) >= 1:
 		combobox.set(comboboxValues[0])
 	else:
 		combobox.set("")
-	writeSettings(comboboxValues)
+	writeSettings([{"name": repo.split(" (")[0], "url": repo.split(" (")[1][:-1]} for repo in comboboxValues])
 
 def useCustomModRepo(modlistWindow, selectedItem, combobox):
 	if len(combobox.cget("values")) < 1:
 		return
 	if devMode: print("using custom mod repo")
 	refreshModsConfig()
-	newModData = loadMods(None, f"{selectedItem.get()}/modlist.json")
+	selected_repo = next(repo for repo in combobox.cget("values") if repo == selectedItem.get())
+	newModData = loadMods(None, f"{selected_repo.split(' (')[1][:-1]}/modlist.json")
 	if newModData == "cannotAccessModList":
 		messagebox.showerror("Error", "Cannot access mod list. Please check the URL and try again.")
 		return
