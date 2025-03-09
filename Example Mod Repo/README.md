@@ -78,7 +78,7 @@ Copy and paste the following JSON structure into your `modlist.json` file:
 ```json
 {
 	"assetsURL": ["https://winrarisyou.github.io/SMC-DMM-Test"],
-	"winrarisou.testmod": {
+	"winrarisyou.testmod": {
 		"FileName": "testmod.zip",
 		"Version": "0.1",
 		"GameVersion": "v8.beta29.6",
@@ -86,7 +86,7 @@ Copy and paste the following JSON structure into your `modlist.json` file:
 		"Name": "Test Mod",
 		"Author": "WINRARisyou"
 	},
-	"winrarisou.testmod2": {
+	"winrarisyou.testmod2": {
 		"FileName": "testmod.zip",
 		"Version": "0.1",
 		"GameVersion": "v8.beta29.6",
