@@ -3,6 +3,7 @@ import json
 import os
 from PIL import Image, ImageTk
 import requests
+import sys
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -23,6 +24,7 @@ onWindows = None
 refreshModsConfig = None
 selectedMod = None
 showOutput = False
+updateOnlineModData = None
 ### /DEFS ###
 ### FUNCTIONS
 def createWindow(baseWindow, gameVer, modlistData, customModRepo=False):
@@ -188,7 +190,7 @@ def getInstalledModVersion(modID):
 
 def loadModIcon(mod, modIconLabel):
 	def fetchIcon():
-		iconURL = f"{mod['Mod Manager Images Folder URL']}/icon.png"
+		iconURL = f"{mod["Mod Manager Images Folder URL"]}/icon.png"
 		iconImage = downloadImage(iconURL)
 		if iconImage is not None:
 			try:
@@ -235,6 +237,7 @@ def loadMods(jsonFilePath=None, jsonURL="https://winrarisyou.github.io/SMC-Deskt
 	"""
 	modlistData = []
 	try:
+		data = None
 		if jsonFilePath != None:
 			# assume it's a testing environment and override online download
 			if os.path.exists(jsonFilePath):
@@ -335,7 +338,10 @@ def onModSelect(modListbox, modlistData, modNameLabel, modAuthorLabel, modDescri
 		showModDetails(mod, modNameLabel, modAuthorLabel, modDescriptionLabel, installedVersionLabel, latestVersionLabel, installedGameVersionLabel, modGameVersionLabel, modIconLabel, gameVersion)
 
 def readSettings():
-	settingsPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "settings.json")
+	if getattr(sys, "frozen", False):
+		settingsPath = os.path.join(os.path.dirname(sys.executable), "settings.json")
+	else:
+		settingsPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "settings.json")
 	with open(settingsPath, "r") as f:
 		settings = json.load(f)
 		return(settings.get("Modlist"))
@@ -425,27 +431,29 @@ def addToCombobox(selectedItem, combobox):
 
 def viewCustomModRepos():
 	selectedItem = tk.StringVar()
-	modlistWindow = subWindow.createSubWindow(onlineMods, "View custom mod lists", icon="icons/icon-512.png", size=[607, 38])
+	modlistWindow = subWindow.createSubWindow(onlineMods, "View custom mod lists", icon="icons/icon-512.png", size=[607, 114])
 	modlistWindow.resizable(False, False)
 	modRepoCombobox = ttk.Combobox(modlistWindow, textvariable=selectedItem, values=[], width=25)
 	# get saved mod list urls
 	modlistSettings = readSettings()
 
 	if modlistSettings:
-		modRepoCombobox.config(values=[f"{repo['name']} ({repo['url']})" for repo in modlistSettings.get("Custom Mod Repos", [])])
+		modRepoCombobox.config(values=[f"{repo["name"]} ({repo["url"]})" for repo in modlistSettings.get("Custom Mod Repos", [])])
 	if len(modRepoCombobox.cget("values")) >= 1:
 		modRepoCombobox.set(modRepoCombobox.cget("values")[0])
 	
-	comboboxTooltip = tooltip.Tooltip(modRepoCombobox, bg=modlistWindow.cget("bg"), text=f"{selectedItem.get()}", borderColor="black", borderWidth=1, wraplength=-1)
+	comboboxTooltip = tooltip.Tooltip(modRepoCombobox, bg=modlistWindow.cget("bg"), text=f"{"Paste the mod link here" if selectedItem.get() == "" else selectedItem.get()}", borderColor="black", borderWidth=1, wraplength=-1)
 	def updateTooltip(*args): # for some reason it's spitting out 3 arguments, so *args is needed
-		comboboxTooltip.text = selectedItem.get()
+		comboboxTooltip.text = "Paste the mod link here" if selectedItem.get() == "" else selectedItem.get()
 	selectedItem.trace_add("write", updateTooltip) # https://stackoverflow.com/a/44365434
 	
-	modRepoCombobox.pack(side="left", anchor="w", padx=5)
+	instructions = ttk.Label(modlistWindow, text="To add a custom mod repo, paste the URL in the box above and click \n\"Add URL to list\".\nTo remove a repo, select it and click \"Remove URL from list\".")
+	instructions.pack(side="bottom", anchor="sw")
+	modRepoCombobox.pack(side="left", anchor="nw", padx=5)
 	addURLbutton = ttk.Button(modlistWindow, text="Add URL to list", command=lambda: addToCombobox(selectedItem, modRepoCombobox))
-	addURLbutton.pack(side="left", anchor="w")
+	addURLbutton.pack(side="left", anchor="nw")
 	removeURLbutton = ttk.Button(modlistWindow, text="Remove URL from list", command=lambda: removeFromCombobox(selectedItem, modRepoCombobox))
-	removeURLbutton.pack(side="left", anchor="w")
+	removeURLbutton.pack(side="left", anchor="nw")
 
 def selectCustomModRepo():
 	selectedItem = tk.StringVar()
@@ -457,9 +465,14 @@ def selectCustomModRepo():
 	modlistSettings = readSettings()
 
 	if modlistSettings:
-		modRepoCombobox.config(values=[f"{repo['name']} ({repo['url']})" for repo in modlistSettings.get("Custom Mod Repos", [])])
+		modRepoCombobox.config(values=[f"{repo["name"]} ({repo["url"]})" for repo in modlistSettings.get("Custom Mod Repos", [])])
 	if len(modRepoCombobox.cget("values")) >= 1:
 		modRepoCombobox.set(modRepoCombobox.cget("values")[0])
+
+	comboboxTooltip = tooltip.Tooltip(modRepoCombobox, bg=modlistWindow.cget("bg"), text=f"{"Select the mod links from this list" if selectedItem.get() == "" else selectedItem.get()}", borderColor="black", borderWidth=1, wraplength=-1)
+	def updateTooltip(*args): # for some reason it's spitting out 3 arguments, so *args is needed
+		comboboxTooltip.text = "Select the mod links from this list" if selectedItem.get() == "" else selectedItem.get()
+	selectedItem.trace_add("write", updateTooltip) # https://stackoverflow.com/a/44365434
 
 	modRepoCombobox.pack(side="left", anchor="w", padx=5)
 	useSelectedModListbutton = ttk.Button(modlistWindow, text="Use selected mod repo", command=lambda: useCustomModRepo(modlistWindow, selectedItem, modRepoCombobox))
@@ -485,9 +498,10 @@ def useCustomModRepo(modlistWindow, selectedItem, combobox):
 	if len(combobox.cget("values")) < 1:
 		return
 	if devMode: print("using custom mod repo")
-	refreshModsConfig()
 	selected_repo = next(repo for repo in combobox.cget("values") if repo == selectedItem.get())
-	newModData = loadMods(None, f"{selected_repo.split(' (')[1][:-1]}/modlist.json")
+	newModData = loadMods(None, f"{selected_repo.split(" (")[1][:-1]}/modlist.json")
+	updateOnlineModData(newModData)
+	refreshModsConfig()
 	if newModData == "cannotAccessModList":
 		messagebox.showerror("Error", "Cannot access mod list. Please check the URL and try again.")
 		return
@@ -499,7 +513,10 @@ def useCustomModRepo(modlistWindow, selectedItem, combobox):
 	createWindow(parentWindow, gameVersion, newModData, True)
 
 def writeSettings(newSettings):
-	settingsPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "settings.json")
+	if getattr(sys, "frozen", False):
+		settingsPath = os.path.join(os.path.dirname(sys.executable), "settings.json")
+	else:
+		settingsPath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "settings.json")
 	settings = {}
 	with open(settingsPath, "r") as f:
 		settings = json.load(f)

@@ -1,9 +1,9 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### DEFS ###
-devMode = True
+devMode = False
 global managerVersion
-managerVersion = "1.1.0RC-3"
+managerVersion = "1.1.0"
 import argparse
 import atexit
 import ctypes
@@ -54,22 +54,21 @@ atexit.register(onExit)
 temp_dir = tempfile.mkdtemp()
 os.mkdir(os.path.join(temp_dir, "Unmodified Game Files"))
 
-# Create the main window
+# Create the main window. moved up for the console window
 window = TkinterDnD.Tk() #DnD stands for drag and drop
 parser = argparse.ArgumentParser()
-parser.add_argument('--debug', action='store_true', help='Enable separate console window')
+parser.add_argument("--debug", action="store_true", help="Enable separate console window")
 args = parser.parse_args()
 # Initialize debug window if requested
 if args.debug:
 	devMode = True
 	consoleWindow = debugWindow.DebugWindow(window)
-
 ### /DEFS ###
 ### GLOBALS ###
 global allModVersions
 allModVersions = {}
-global criticallyOutated
-criticallyOutated = False
+global criticallyOutdated
+criticallyOutdated = False
 global gamePath
 gamePath = None
 global gameVersion
@@ -88,14 +87,20 @@ global modifiedFiles
 modifiedFiles = {}
 global modVars
 modVars = {}
+global outdatedMods
+outdatedMods = []
 global SelectedMod, settings
 SelectedMod = settings = None
 global updateType
 updateType = None
 global winWidth, winHeight
 winWidth = winHeight = 0
+global modListbox
+modListbox = None
+global onlineModData
+onlineModData = []
 ### /GLOBALS ###
-### MISC FUNCTIONS ###
+### FUNCTIONS ###
 def backupOriginalFile(gameFilesPath, unmodifiedFilePath):
 	if os.path.exists(gameFilesPath):
 		if devMode: print(f"Backing up {gameFilesPath} to {unmodifiedFilePath}")
@@ -109,10 +114,69 @@ def backupOriginalFile(gameFilesPath, unmodifiedFilePath):
 			modFiles.append(gameFilesPath)
 
 def bringWindowToFront():
-	window.attributes('-topmost', True)
+	window.attributes("-topmost", True)
 	window.after(10, lambda: window.focus_set())
-	window.after(11, lambda: window.attributes('-topmost', False))
+	window.after(11, lambda: window.attributes("-topmost", False))
 
+def checkForModUpdates():
+	def changeText(mod):
+		global modListbox, outdatedMods
+		for i in range(modListbox.size()):
+			if modListbox.get(i).startswith(f"⬜ {mod["Mod Name"]}") or modListbox.get(i).startswith(f"✅ {mod["Mod Name"]}"):
+				modListbox.itemconfig(i, {"fg": "orange"})
+				outdatedMods.append(mod["Mod ID"])
+				break
+
+	for modID in modsConfig:
+		installedMods[modID] = modsConfig[modID]["Version"]
+	global onlineModData
+	for mod in onlineModData:
+		if mod["Mod ID"] in installedMods:
+			print(f"{mod["Mod ID"]} is installed")
+			if mod["Mod ID"] in outdatedMods:
+				outdatedMods.remove(mod["Mod ID"])
+				for i in range(modListbox.size()):
+					if modListbox.get(i).startswith(f"⬜ {mod["Mod Name"]}") or modListbox.get(i).startswith(f"✅ {mod["Mod Name"]}"):
+						modListbox.itemconfig(i, {"fg": "black"})
+						break
+			onlineModVersion = int("".join(filter(str.isdigit, mod["Mod Version"])))
+			installedModVersion = int("".join(filter(str.isdigit, installedMods[mod["Mod ID"]])))
+			if onlineModVersion > installedModVersion and len(str(onlineModVersion)) == len(str(installedModVersion)):
+				if devMode: print("online   ", onlineModVersion)
+				if devMode: print("installed", installedModVersion)
+				if devMode: print(f"{mod["Mod ID"]} has an update")
+				changeText(mod)
+			
+			if len(str(onlineModVersion)) > len(str(installedModVersion)):
+				if devMode: print(f"online mod version is longer than installed mod version")
+				if devMode: print("before normalization")
+				if devMode: print("online   ", onlineModVersion)
+				if devMode: print("installed", installedModVersion)
+				for i in range(abs(len(str(onlineModVersion)) - len(str(installedModVersion)))):
+					installedModVersion *= 10
+				if devMode: print("after normalization")
+				if devMode: print("online   ", onlineModVersion)
+				if devMode: print("installed", installedModVersion)
+			
+			elif len(str(installedModVersion)) > len(str(onlineModVersion)):
+				if devMode: print(f"installed mod version is longer than online mod version")
+				if devMode: print("before normalization")
+				if devMode: print("installed", installedModVersion)
+				if devMode: print("online   ", onlineModVersion)
+				for i in range(abs(len(str(onlineModVersion)) - len(str(installedModVersion)))):
+					onlineModVersion *= 10
+				if devMode: print("after normalization")
+				if devMode: print("installed", installedModVersion)
+				if devMode: print("online   ", onlineModVersion)
+			
+			if onlineModVersion > installedModVersion:
+				print(f"{mod["Mod ID"]} has an update")
+				changeText(mod)
+		else:
+			print(mod["Mod ID"])
+			if mod["Mod ID"] in outdatedMods:
+				outdatedMods.remove(mod["Mod ID"])
+				print(outdatedMods)
 
 def copyModFile():
 	copyModFiles = filedialog.askopenfiles(title="Please select mod files")
@@ -275,7 +339,7 @@ def processFile(modID, modPriority, root, file, assetsPath):
 			gameFiles.append(path)
 
 	with open(os.path.join(gamePath, "modifiedFiles.json"), "w"):
-		if getattr(sys, 'frozen', False):
+		if getattr(sys, "frozen", False):
 			pyinstallerPath = sys._MEIPASS
 			with open(os.path.join(gamePath, "modifiedFiles.json"), "w") as f:
 				json.dump({"_MEIPASS": pyinstallerPath, "oldTempDir": temp_dir, "modFiles": moddedFiles, "gameFiles": gameFiles}, f, indent="\t")
@@ -305,9 +369,12 @@ def readSettingsJSON():
 		with open("settings.json", "w") as f:
 			if os.path.exists(os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct") and onWindows:
 				if devMode: print("Super Mario Construct installed via itch.io app")
-				json.dump({"GameLocation": f"{os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct"}", "ModsLocation": "Mods", "Width": 832, "Height": 480}, f, indent="\t")
+				json.dump({"GameLocation": f"{os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct"}", "ModsLocation": "Mods", "Width": 832, "Height": 480, "Modlist": { "Custom Mod Repos": [] }}, f, indent="\t")
+			elif os.path.exists(os.path.expanduser("~") + "/.config/itch/apps/super-mario-construct") and not onWindows:
+				if devMode: print("Super Mario Construct installed via itch.io app")
+				json.dump({"GameLocation": f"{os.path.expanduser("~") + "/.config/itch/apps/super-mario-construct"}", "ModsLocation": "Mods", "Width": 832, "Height": 480, "Modlist": { "Custom Mod Repos": [] }}, f, indent="\t")
 			else:
-				json.dump({"GameLocation": "", "ModsLocation": "Mods", "Width": 832, "Height": 480}, f, indent="\t")
+				json.dump({"GameLocation": "", "ModsLocation": "Mods", "Width": 832, "Height": 480, "Modlist": { "Custom Mod Repos": [] }}, f, indent="\t")
 		with open("settings.json") as f:
 			settings = json.load(f)
 		gamePath = settings.get("GameLocation")
@@ -325,6 +392,8 @@ def refreshModsConfig():
 	# save the current mod enabled states to oldModsConfig
 	for modID, var in modVars.items():
 		oldModsConfig[modID]["Enabled"] = var.get()
+		if modID in outdatedMods:
+			outdatedMods.remove(modID)
 	modsConfig = {} # Clear existing modsConfig
 
 	# Get a list of all mod zip files
@@ -398,7 +467,7 @@ def refreshModsConfig():
 	for modID in modsConfig:
 		installedMods[modID] = modsConfig[modID]["Version"]
 	onlineModList.installedMods = installedMods
-
+	checkForModUpdates()
 	if devMode:
 		print("Mods configuration refreshed.")
 onlineModList.refreshModsConfig = refreshModsConfig
@@ -570,9 +639,10 @@ def updateModsConfig(modName, modData, fileName):
 		json.dump(modsConfig, f, indent="\t")
 	if devMode: print(f"Updated {modName} (ID: {modID}) in mods.json")
 
-def windowResized(event):
-	settings["Width"] = window.winfo_width()
-	settings["Height"] = window.winfo_height()
+def updateOnlineModData(newData):
+	global onlineModData
+	onlineModData = newData
+onlineModList.updateOnlineModData = updateOnlineModData
 
 def findGameVer(data):
 	lastNearestIndex = -1 # Track the last occurrence of "nearest"
@@ -638,15 +708,15 @@ def getLatestVersion():
 				if msg:
 					webbrowser.open("https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/releases/latest")
 				else:
-					if messagebox.askyesno("", "Are you sure you want to continue?", icon="warning"):
-						global criticallyOutated
-						criticallyOutated = True
+					if messagebox.askyesno("Confirm", "Are you sure you want to continue?", icon="warning"):
+						global criticallyOutdated
+						criticallyOutdated = True
 					else:
 						askMsg()
 						return
 			case _:
 				msg = messagebox.askyesno("Update Available", f"An update is available.\nInstalled version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
-		#msg = messagebox.askyesno("Update Available", f"An update is available for the mod manager.\nCurrent version: {managerVersion}\nLatest version: {latestManagerVersion}\nDo you want to download it?", icon="info")
+		
 		if msg:
 			webbrowser.open("https://github.com/WINRARisyou/SMC-Desktop-Mod-Manager/releases/latest")
 
@@ -671,7 +741,7 @@ def getLatestVersion():
 def handleFileDrop(event):
 	files = window.tk.splitlist(event.data)
 	for file in files:
-		if os.path.isfile(file) and file.endswith('.zip'):
+		if os.path.isfile(file) and file.endswith(".zip"):
 			# handle zip file drop
 			if os.path.exists(os.path.join(modsPath, os.path.basename(file))):
 				overwrite = messagebox.askyesno("Overwrite Mod", f"The mod you are trying to import already exists. Do you want to overwrite it?")
@@ -697,7 +767,11 @@ def handleFileDrop(event):
 			refreshModsConfig()
 		else:
 			messagebox.showerror("Invalid File", f"Unsupported file type: {file}")
-### /MISC FUNCTIONS ###
+
+def windowResized(event):
+	settings["Width"] = window.winfo_width()
+	settings["Height"] = window.winfo_height()
+### /FUNCTIONS ###
 ### MAIN ###
 ## GET PATHS ##
 readSettingsJSON()
@@ -773,7 +847,8 @@ filesMenuBar.add_separator()
 filesMenuBar.add_command(label="Exit", command=window.quit)
 
 # Tools Menu
-toolsMenuBar.add_command(label="Online Mod List", command=lambda: onlineModList.createWindow(onlineModList.parentWindow, gameVersion, onlineModData))
+toolsMenuBar.add_command(label="Online mod list", command=lambda: onlineModList.createWindow(onlineModList.parentWindow, gameVersion, onlineModData))
+toolsMenuBar.add_command(label="Check for mod updates", command=checkForModUpdates)
 toolsMenuBar.add_command(label="Refresh Mods", command=refreshModsConfig)
 if devMode:
 	toolsMenuBar.add_separator()
@@ -799,12 +874,13 @@ def createModList(sortedMods):
 	frame.pack(fill="x", pady=2)
 
 	# listbox to display mods
+	global modListbox
 	modListScrollbar = ttk.Scrollbar(frame, orient="vertical")
 	modListbox = tk.Listbox(frame, width=50, height=10, activestyle="dotbox", yscrollcommand=modListScrollbar.set)
 	modListbox.pack(side="left", padx=5)
 
 	modListbox.drop_target_register(DND_FILES)
-	modListbox.dnd_bind('<<Drop>>', handleFileDrop)
+	modListbox.dnd_bind("<<Drop>>", handleFileDrop)
 
 	modListScrollbar.pack(side="left", fill="y")
 	modListScrollbar.config(command=modListbox.yview)
@@ -878,7 +954,7 @@ def createModList(sortedMods):
 			if data.get("FolderPath") == mod:
 				modID = id
 				break
-		warning = messagebox.askokcancel("Warning", f"Are you sure you want to delete \"{modsConfig[modID].get('Name')}\"?\nIt will be removed from your system, and you will have to redownload it.", icon="warning")
+		warning = messagebox.askokcancel("Warning", f"Are you sure you want to delete \"{modsConfig[modID].get("Name")}\"?\nIt will be removed from your system, and you will have to redownload it.", icon="warning")
 		if warning:
 			if mod:
 				if os.path.isdir(os.path.join(modsPath, mod)):
@@ -951,14 +1027,22 @@ def createModList(sortedMods):
 			updateModList()
 
 	def updateModList():
+		global outdatedMods, modListbox
 		modListbox.delete(0, tk.END)
+
+
 		for modID, modData in sortedMods:
 			modName = modData.get("Name") # Get the mod name for display
 			checked = "✅ " if modVars[modID].get() else "⬜ "
-			if devMode:
-				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')} - {modData.get('Author', 'Author Unknown')} (Priority: {modData['Priority']})")
+			displayText = f"{checked}{modName} - {modData.get("Version", "")} - {modData.get("Author", "Author Unknown")}"
+			if devMode: displayText += f" (Priority: {modData["Priority"]})"
+			modListbox.insert(tk.END, displayText)
+			# Re-apply color if it was previously set
+			if modID in outdatedMods:
+				modListbox.itemconfig(tk.END, {"fg": "orange"})
 			else:
-				modListbox.insert(tk.END, f"{checked}{modName} - {modData.get('Version', '')} - {modData.get('Author', 'Author Unknown')}")
+				modListbox.itemconfig(tk.END, {"fg": "black"})
+
 		# Check if the mods list can be scrolled
 		if not modListbox.size() > 10:
 			modListScrollbar.pack_forget()
@@ -1008,7 +1092,6 @@ latestGameVersion = makeWebRequest("https://levelsharesquare.com/api/accesspoint
 if type(latestGameVersion) != str: latestGameVersion = latestGameVersion.json().get("version") 
 
 latestManagerVersion = makeWebRequest("https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/current_version.json", 10, "Could not get latest mod manager version")
-#latestManagerVersion = {"version": "1.0.2.1", "updateType": "critical"}
 updateType = None
 if type(latestManagerVersion) != str: updateType = latestManagerVersion.json().get("updateType")
 if type(latestManagerVersion) != str: latestManagerVersion = latestManagerVersion.json().get("version")
@@ -1030,27 +1113,31 @@ latestManagerVersionLabel.pack(pady=0, anchor="e")
 
 getLatestVersion()
 
-if criticallyOutated:
+if criticallyOutdated:
 	managerVersionLabel.config(fg="red")
 	tooltip.Tooltip(managerVersionLabel, bg=window.cget("bg"), text="You are critically out of date. Please update the mod manager.", borderColor="black", borderWidth=1, wraplength=270)
 ## /GUI ##
 ## ONLINE MOD LIST ##
 jsonURL = "https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"
-if not devMode: jsonFilePath = "tests/downloadtest/modlist.json"
+if devMode and not getattr(sys, "frozen", False): jsonFilePath = "tests/downloadtest/modlist.json"
 else: jsonFilePath = None
 
 onlineModList.parentWindow = window
 onlineModList.downloadLocation = modsPath
+
 for modID in modsConfig:
 	installedMods[modID] = modsConfig[modID]["Version"]
 onlineModList.installedMods = installedMods
 onlineModList.devMode = devMode
+
 onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
-if onlineModData == "cannotAccessModList" or False:
-	toolsMenuBar.entryconfig("Online Mod List", state="disabled")
+if onlineModData == "cannotAccessModList" or onlineModData == False:
+	toolsMenuBar.entryconfig("Online mod list", state="disabled")
+	toolsMenuBar.entryconfig("Check for mod updates", state="disabled")
 ## /ONLINE MOD LIST ##
 ### Run it!!1!
 crashDetection()
+checkForModUpdates()
 window.mainloop()
 ### /MAIN ###
 ### WINRARisyou was here

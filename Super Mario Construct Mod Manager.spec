@@ -1,12 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
-
-
+# linux tkinter location: config/.local/lib/python3.12/site-packages/tkinterdnd2 --- gitpod location: /workspace/.pyenv_mirror/user/current/lib/python3.12/site-packages/tkinterdnd2
 a = Analysis(
 	['main.py'],
 	pathex=[],
-	binaries=[],
-	datas=[('icons/icon-512.png', 'icons/.')],
-	hiddenimports=[],
+	binaries=[('modules', 'modules'), (os.path.join(os.getenv('LOCALAPPDATA'), 'Programs\\Python\\Python313\\Lib\\site-packages\\tkinterdnd2'), 'tkinterdnd2')],
+	datas=[('icons/icon-512.png', 'icons/.'), ('images','images')],
+	hiddenimports=['PIL', 'PIL.Image', 'PIL.ImageTk', 'PIL._tkinter_finder', 'PIL._imagingtk', 'tkinter.scrolledtext', 'tkinter.dnd', 'tkinterdnd2', 'TkinterDnD', 'tkdnd'],
 	hookspath=[],
 	hooksconfig={},
 	runtime_hooks=[],
