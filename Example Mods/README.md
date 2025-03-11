@@ -1,5 +1,4 @@
-# MODS FOR THE WEB MOD LOADER (WML) ARE *NOT* COMPATIBLE WITH THIS (SMC-DMM) DUE TO DIFFERENCES IN HOW THE GAME FILES ARE STORED
-
+# Mods for [LSS Web Mod Loader](https://github.com/Level-Share-Square/LSS-web-mod-loader) (WML) are *NOT* compatible with SMC-DMM due to differences in how game files are compiled between the web and desktop versions.
 # How to Create a Mod
 Creating a mod for Super Mario Construct involves creating a `mod.json` file. Below is a step-by-step guide on how to create a mod using the `mod.json` format.
 
