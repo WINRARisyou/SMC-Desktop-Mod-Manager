@@ -686,7 +686,7 @@ def getInstalledGameVersion():
 		return "Game Version Not Found"
 
 def getLatestVersion():
-	keywordsToIgnore = ["alpha", "beta", "dev", "pre-release", "pre_release", "release-candidate", "release_candidate", "test", "a", "b", "d", "pre", "rc", "t"]
+	keywordsToIgnore = ["alpha", "april-fools", "beta", "dev", "pre-release", "pre_release", "release-candidate", "release_candidate", "test", "a", "apf", "b", "d", "pre", "rc", "t"]
 	for keyword in keywordsToIgnore:
 		if keyword in managerVersion.lower():
 			if devMode: print(f"Keyword: \"{keyword}\" found in version: {managerVersion}, not checking version")
