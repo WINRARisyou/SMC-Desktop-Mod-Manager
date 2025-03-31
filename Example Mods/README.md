@@ -1,5 +1,4 @@
-# MODS FOR THE WEB MOD LOADER (WML) ARE *NOT* COMPATIBLE WITH THIS (SMC-DMM) DUE TO DIFFERENCES IN HOW THE GAME FILES ARE STORED
-
+# Mods for [LSS Web Mod Loader](https://github.com/Level-Share-Square/LSS-web-mod-loader) (WML) are *NOT* compatible with SMC-DMM due to differences in how game files are compiled between the web and desktop versions.
 # How to Create a Mod
 Creating a mod for Super Mario Construct involves creating a `mod.json` file. Below is a step-by-step guide on how to create a mod using the `mod.json` format.
 
@@ -15,6 +14,7 @@ Copy and paste the following JSON structure into your `mod.json` file:
 	"ID": "your.mod.id",
 	"Version": "1.0",
 	"Name": "Your Mod Name",
+	"Author": "Your Name",
 	"GameVersion": "Game Version your mod is built for",
 	"AssetsFolder": "assets/yourmod",
 	"Description": "A brief description of your mod."
@@ -24,6 +24,7 @@ Copy and paste the following JSON structure into your `mod.json` file:
 - **ID**: A unique identifier for your mod. It is recommended to use a reverse domain name notation (e.g., `com.yourname.modname` or `yourname.modname`). While the mod ID *can* be anything and not follow reverse DNS notation, if you take that route, make sure it's unique so that there will be no conflicts.
 - **Version**: The version of your mod.
 - **Name**: The name of your mod.
+- **Author**: The name of the mod creator (that's you!)
 - **GameVersion**: The version of the game your mod is compatible with.
 - **AssetsFolder**: The folder where your mod's assets are stored. It can be anything ("assets/SMC", "assets/files", "files"), just make sure that it is defined in this field)
 - **Description**: A brief description of what your mod does.
