@@ -33,6 +33,7 @@ Manages replacing game files in Super Mario Construct
 
 5. **Save and Play**:
 	- Click the `Save & Play` button to apply the selected mods and start the game.
+		- You can download mods from the [LSS Discord](https://discord.gg/m8U8FQw) or directly from DMM by clicking `Tools` > `Online Mod List`.
 	- Click the `Play Without Mods` button to start the game without applying any mods.
 
 ## Building from Source
