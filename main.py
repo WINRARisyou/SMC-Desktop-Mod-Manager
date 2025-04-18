@@ -1,9 +1,9 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
-### DEFS ###
+### IMPORTS ###
 devMode = False
 global managerVersion
-managerVersion = "1.1.0"
+managerVersion = "1.1.1"
 import argparse
 import atexit
 import ctypes
@@ -63,7 +63,7 @@ args = parser.parse_args()
 if args.debug:
 	devMode = True
 	consoleWindow = debugWindow.DebugWindow(window)
-### /DEFS ###
+### /IMPORTS ###
 ### GLOBALS ###
 global allModVersions
 allModVersions = {}
@@ -374,7 +374,11 @@ def readSettingsJSON():
 				if devMode: print("Super Mario Construct installed via itch.io app")
 				json.dump({"GameLocation": f"{os.path.expanduser("~") + "/.config/itch/apps/super-mario-construct"}", "ModsLocation": "Mods", "Width": 832, "Height": 480, "Modlist": { "Custom Mod Repos": [] }}, f, indent="\t")
 			else:
-				json.dump({"GameLocation": "", "ModsLocation": "Mods", "Width": 832, "Height": 480, "Modlist": { "Custom Mod Repos": [] }}, f, indent="\t")
+				if os.path.exists("Super Mario Construct.exe"):
+					if devMode: print("Super Mario Construct installed in current directory")
+					json.dump({"GameLocation": f"{os.getcwd()}", "ModsLocation": "Mods", "Width": 832, "Height": 480, "Modlist": { "Custom Mod Repos": [] }}, f, indent="\t")
+				else:
+					json.dump({"GameLocation": "", "ModsLocation": "Mods", "Width": 832, "Height": 480, "Modlist": { "Custom Mod Repos": [] }}, f, indent="\t")
 		with open("settings.json") as f:
 			settings = json.load(f)
 		gamePath = settings.get("GameLocation")
@@ -686,7 +690,7 @@ def getInstalledGameVersion():
 		return "Game Version Not Found"
 
 def getLatestVersion():
-	keywordsToIgnore = ["alpha", "april-fools", "beta", "dev", "pre-release", "pre_release", "release-candidate", "release_candidate", "test", "a", "apf", "b", "d", "pre", "rc", "t"]
+	keywordsToIgnore = ["alpha", "april-fools", "beta", "dev", "pre-release", "pre_release", "release-candidate", "release_candidate", "test", "apf", "a" "b", "d", "pre", "rc", "t"]
 	for keyword in keywordsToIgnore:
 		if keyword in managerVersion.lower():
 			if devMode: print(f"Keyword: \"{keyword}\" found in version: {managerVersion}, not checking version")
