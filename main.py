@@ -228,7 +228,7 @@ def makeWebRequest(url: str, timeout: int, exceptionText: str):
 	Makes a web request to the desired URL.\n
 	:param url: URL of the web request
 	:param timeout: Time in seconds before the request should time out
-	:param exceptionText: Text to return of the request fails
+	:param exceptionText: Text to return if the request fails
 	"""
 	try:
 		response = requests.get(url, timeout=timeout)
