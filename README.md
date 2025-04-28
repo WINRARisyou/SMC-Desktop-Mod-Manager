@@ -29,7 +29,7 @@ Manages replacing game files in Super Mario Construct
 	- Double click the checkboxes to enable or disable mods.
 	- Use the up and down arrows to adjust the priority of the mods.
     	- Mods higher in the list will override lower mods if they modify the same files
-	- Pressing the refresh button will reload the mods list, adding any mods that were placed in the mods folder. This will reset the priorities of mods and will disable all of them, so be aware of that.
+	- Pressing the refresh button will reload the mods list, adding any mods that were placed in the mods folder. This will reset the priorities of mods and will disable any mods that have been enabled unless `Save & Play` is pressed.
 
 5. **Save and Play**:
 	- Click the `Save & Play` button to apply the selected mods and start the game.
