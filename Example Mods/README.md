@@ -34,6 +34,7 @@ Copy and paste the following JSON structure into your `mod.json` file:
 	"ID": "theflyingdutchman.spaghbettle",
 	"Version": "1.0",
 	"Name": "Spaghbettle",
+	"Author": "The Flying Dutchman",
 	"GameVersion": "v8.beta29.4",
 	"AssetsFolder": "assets/SMC",
 	"Description": "Mod replaces all bony beetles with spaghbettles (AKA pastabeetle) in both gamestyles of Super Mario Construct."
