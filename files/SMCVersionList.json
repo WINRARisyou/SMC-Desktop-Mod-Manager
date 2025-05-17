@@ -1,0 +1,62 @@
+{
+	"assetsURL": ["https://archive.org/download/SMC-Versions-Archive"],
+	"Releases": [
+		{
+			"Version": "1.0",
+			"Release Date": "10-28-2019",
+			"Description": "The beginning."
+		},
+		{
+			"Version": "2.0",
+			"Release Date": "12-25-2019",
+			"Description": "This is the Winter Update, as it came out around Christmas/New-years! It added many snowy features."
+		},
+		{
+			"Version": "3.5",
+			"Release Date": "6-6-2020",
+			"Description": "The Water Update, hydrating the game, and also adding a ton of new other content. It was one of the biggest updates."
+		},
+		{
+			"Version": "4.10",
+			"Release Date": "8-24-2020",
+			"Description": "The Volcano Update received the most updates so far, and added many new crucial features, such as the volcano theme, advanced changers, Dragon Coins & heavily customizable platforms to end off with."
+		},
+		{
+			"Version": "5.1.1",
+			"Release Date": "10-11-2019",
+			"Description": "The Power-Up-date added many new power-ups, but also a very crucial dinosaur; Yoshi! It also added the Star Road theme, and the Kuribo Shoe."
+		},
+		{
+			"Version": "6.2.1",
+			"Release Date": "10-24-2019",
+			"Description": "The Halloween Update, released in October of 2019, finally added a big variety of Boos to the game, among other spooky enemies and the Ghost House tilesets — and a new minigame: Boo Busters!"
+		},
+		{
+			"Version": "7.3.2",
+			"Release Date": "12-28-2020",
+			"Description": "The Anniversary Update, released a year after SMC's 1.0 launch, added some features from planned updates early, such as conveyor belts, the autumn tileset & the King Boo boss."
+		}
+	],
+	"Snapshots": [
+		{
+			"Version": "29.3",
+			"Release Date": "1-25-25",
+			"Description": "Snapshot v8 29.3"
+		},
+		{
+			"Version": "29.4",
+			"Release Date": "1-30-25",
+			"Description": "Snapshot v8 29.4"
+		},
+		{
+			"Version": "29.5",
+			"Release Date": "2-10-25",
+			"Description": "Snapshot v8 29.5"
+		},
+		{
+			"Version": "29.6",
+			"Release Date": "2-14-25",
+			"Description": "Snapshot v8 29.6"
+		}
+	]
+}
