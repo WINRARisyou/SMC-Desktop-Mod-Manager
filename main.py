@@ -1,9 +1,9 @@
 ### WINRARisyou was here
 ### Give credit if you use this code
 ### IMPORTS ###
-devMode = False
+devMode = True
 global managerVersion
-managerVersion = "1.1.1"
+managerVersion = "2.0.0-alpha"
 import argparse
 import atexit
 import ctypes
@@ -23,7 +23,8 @@ from zipfile import ZipFile
 import webbrowser
 from modules import *
 from modules import resourcePath as resPath
-
+### /IMPORTS ###
+### GLOBALS ###
 global onWindows
 onWindows = platform.system() == "Windows"
 if onWindows: ctypes.windll.shcore.SetProcessDpiAwareness(2)
@@ -63,8 +64,7 @@ args = parser.parse_args()
 if args.debug:
 	devMode = True
 	consoleWindow = debugWindow.DebugWindow(window)
-### /IMPORTS ###
-### GLOBALS ###
+
 global allModVersions
 allModVersions = {}
 global criticallyOutdated
@@ -179,7 +179,7 @@ def checkForModUpdates():
 				print(outdatedMods)
 
 def copyModFile():
-	copyModFiles = filedialog.askopenfiles(title="Please select mod files")
+	copyModFiles = filedialog.askopenfiles(title="Please select Mod File(s)", filetypes=[("ZIP files", "*.zip")], multiple=True)
 	if copyModFiles:
 		for file in copyModFiles:
 			if file.name.endswith(".zip"):
@@ -217,9 +217,9 @@ def crashDetection():
 					if devMode: print(os.path.join(gamePath, "www", gameFile))
 					shutil.copy2(os.path.join(oldTempDir, "Unmodified Game Files", gameFile), os.path.join(gamePath, "www", gameFile))
 				shutil.rmtree(oldTempDir)
-				messagebox.showinfo("Crashed last exit", "SMC-DMM crashed the last time it ran, and it has detected some corrupted game files.\nIt has attempted crash recovery, but everything may not have been fixed.\nPlease launch without mods, and if everything is normal, then continue on with your day. Otherwise, you will need to redownload SMC (your levels will stay intact).")
+				messagebox.showinfo("Crashed last exit", "DMM crashed the last time it ran, and it has detected some lingering mod files.\nIt has attempted crash recovery, but everything may not have been fixed.\nPlease launch without mods, and if everything is normal, then continue on with your day. Otherwise, you will need to redownload SMC (your levels will stay intact).")
 			else:
-				messagebox.showwarning("Crashed last exit", "SMC-DMM crashed the last time it ran, and it has detected some corrupted game files.\nIt has attempted crash recovery, but some game files could not be recovered.\nYou will need to redownload SMC to fix any files that mods changed (your levels will stay intact).")
+				messagebox.showwarning("Crashed last exit", "DMM crashed the last time it ran, and it has detected some lingering mod files.\nIt has attempted crash recovery, but some game files could not be recovered.\nYou will need to redownload SMC to fix any files that mods changed (your levels will stay intact).")
 		if os.path.exists(os.path.join(gamePath, "modifiedFiles.json")):
 			os.remove(os.path.join(gamePath, "modifiedFiles.json"))
 
@@ -434,13 +434,13 @@ def refreshModsConfig():
 					try:
 						modData = json.load(f)
 					except json.JSONDecodeError as e:
-						if devMode: print(f"Error parsing {modJSONPath}: {e}")
-						messagebox.showerror("Parsing Error", f"Mod {modFolderName}.zip could not be parsed. Perhaps mod.json is malformed?")
+						if devMode: print(f"Error parsing {modJSONPath} ({modFolderName}):\n{e}")
+						messagebox.showerror("Parsing Error", f"Mod {modFolderName}.zip could not be parsed. Perhaps its mod.json is malformed?")
 						continue
 					except Exception as e:
 						if devMode: print(f"Unexpected error: {e}")
-						if devMode: messagebox.showerror("Error", f"Unexpected error while reading mods.json:\n{e}")
-						else: messagebox.showerror("Error", "An unexpected error occured while parsing {modFolderName}.zip. It has been skipped.")
+						if devMode: messagebox.showerror("Error", f"Unexpected error while reading {modFolderName}'s mods.json:\n{e}")
+						else: messagebox.showerror("Error", f"An unexpected error occured while parsing {modFolderName}.zip. It has been skipped.")
 						continue
 				modName = modData.get("Name")
 				modID = modData.get("ID") # Get the mod's ID
@@ -568,7 +568,7 @@ def saveAndPlay():
 				modVersion = allModVersions[mod][:-1]
 				if gameVersion.startswith(modVersion):
 					continue
-			msg = tk.messagebox.askyesnocancel(title="Possible Mod Incompatability", message=f"Mod \"{modsConfig[mod]["Name"]}\" may not be compatible with the current game version ({gameVersion}), as it was built for {allModVersions[mod]}.\nDo you want to disable it?", icon="warning")
+			msg = tk.messagebox.askyesnocancel(title="Possible Mod Incompatability", message=f"Mod \"{modsConfig[mod]["Name"]}\" may not be compatible with the current Game Version ({gameVersion}), as it was built for {allModVersions[mod]}.\nDo you want to disable it?", icon="warning")
 			match msg:
 				case False:
 					pass
@@ -601,9 +601,21 @@ def setGameLocation():
 	elif not newGamePath == "":
 		setGameLocation()
 
-def sortModsByPriority(modsConfig):
-	"""Sort mods by priority."""
-	return sorted(modsConfig.items(), key=lambda item: item[1].get("Priority", 0), reverse=False)
+def setupOnlineModList():
+	"""Sets up the online mod list."""
+	jsonURL = "https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"
+	if devMode and not getattr(sys, "frozen", False): jsonFilePath = "tests/downloadtest/modlist.json"
+	else: jsonFilePath = None
+
+	onlineModList.parentWindow = window
+	onlineModList.downloadLocation = modsPath
+	for modID in modsConfig:
+		installedMods[modID] = modsConfig[modID]["Version"]
+	onlineModList.installedMods = installedMods
+	onlineModList.devMode = devMode
+
+	global onlineModData
+	onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
 
 def setModsLocation():
 	"""Saves the mods folder location to settings.json."""
@@ -617,8 +629,9 @@ def setModsLocation():
 	elif not newModsPath == "":
 		setModsLocation()
 
-def startGame():
-	runGame()
+def sortModsByPriority(modsConfig):
+	"""Sort mods by priority."""
+	return sorted(modsConfig.items(), key=lambda item: item[1].get("Priority", 0), reverse=False)
 
 def updateModsConfig(modName, modData, fileName):
 	"""Update mods.json with new mod data."""
@@ -684,8 +697,8 @@ def getInstalledGameVersion():
 				data = orjson.loads(f.read())
 			return findGameVer(data) or "Unknown"
 		except Exception as e:
-			if devMode:	print(f"Error reading game version: {e}")
-			return "Error Reading Version"
+			if devMode:	print(f"Error reading data.json: {e}")
+			return "Error Retrieving Version"
 	else:
 		return "Game Version Not Found"
 
@@ -739,14 +752,15 @@ def getLatestVersion():
 			latestVersionInt *= 10
 		if devMode: print(f"Latest version as integer (when normalized to match current version's length): {latestVersionInt}")
 
-	if managerVersionInt < latestVersionInt and latestManagerVersion != "Could not get latest mod manager version":
+	if managerVersionInt < latestVersionInt and latestManagerVersion != "Could not get latest Mod Manager Version":
 		askMsg()
 
 def handleFileDrop(event):
 	files = window.tk.splitlist(event.data)
 	for file in files:
+		# handle zip file drop
 		if os.path.isfile(file) and file.endswith(".zip"):
-			# handle zip file drop
+			
 			if os.path.exists(os.path.join(modsPath, os.path.basename(file))):
 				overwrite = messagebox.askyesno("Overwrite Mod", f"The mod you are trying to import already exists. Do you want to overwrite it?")
 				if overwrite:
@@ -757,8 +771,8 @@ def handleFileDrop(event):
 				shutil.copy2(file, modsPath)
 				if devMode: print(f"Copied {file} to {modsPath}")
 				refreshModsConfig()
+		# handle folder mod drop
 		elif os.path.isdir(file):
-			# handle folder mod drop
 			dest = os.path.join(modsPath, os.path.basename(file))
 			if os.path.exists(dest):
 				overwrite = messagebox.askyesno("Overwrite Mod", f"The mod you are trying to import already exists. Do you want to overwrite it?")
@@ -851,8 +865,8 @@ filesMenuBar.add_separator()
 filesMenuBar.add_command(label="Exit", command=window.quit)
 
 # Tools Menu
-toolsMenuBar.add_command(label="Online mod list", command=lambda: onlineModList.createWindow(onlineModList.parentWindow, gameVersion, onlineModData))
-toolsMenuBar.add_command(label="Check for mod updates", command=checkForModUpdates)
+toolsMenuBar.add_command(label="Online Mod list", command=lambda: onlineModList.createWindow(onlineModList.parentWindow, gameVersion, onlineModData))
+toolsMenuBar.add_command(label="Check for Mod Updates", command=checkForModUpdates)
 toolsMenuBar.add_command(label="Refresh Mods", command=refreshModsConfig)
 if devMode:
 	toolsMenuBar.add_separator()
@@ -1070,7 +1084,7 @@ def createModList(sortedMods):
 	SavePlayBtn.pack(side="left", padx=5)
 
 	# Play Without Mods button
-	PlayBtn = ttk.Button(buttonsFrame, text="Play Without Mods", command=startGame)
+	PlayBtn = ttk.Button(buttonsFrame, text="Play Without Mods", command=runGame)
 	PlayBtn.pack(side="left", padx=5)
 
 	# Initialize the mod list
@@ -1092,10 +1106,10 @@ createModList(sortedMods)
 
 gameVersion = getInstalledGameVersion()
 
-latestGameVersion = makeWebRequest("https://levelsharesquare.com/api/accesspoint/gameversion/SMC", 5, "Could not get latest game version")
+latestGameVersion = makeWebRequest("https://levelsharesquare.com/api/accesspoint/gameversion/SMC", 5, "Could not get latest Game Version")
 if type(latestGameVersion) != str: latestGameVersion = latestGameVersion.json().get("version") 
 
-latestManagerVersion = makeWebRequest("https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/current_version.json", 10, "Could not get latest mod manager version")
+latestManagerVersion = makeWebRequest("https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/current_version.json", 10, "Could not get latest Mod Manager Version")
 updateType = None
 if type(latestManagerVersion) != str: updateType = latestManagerVersion.json().get("updateType")
 if type(latestManagerVersion) != str: latestManagerVersion = latestManagerVersion.json().get("version")
@@ -1122,22 +1136,10 @@ if criticallyOutdated:
 	tooltip.Tooltip(managerVersionLabel, bg=window.cget("bg"), text="You are critically out of date. Please update the mod manager.", borderColor="black", borderWidth=1, wraplength=270)
 ## /GUI ##
 ## ONLINE MOD LIST ##
-jsonURL = "https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/modlist.json"
-if devMode and not getattr(sys, "frozen", False): jsonFilePath = "tests/downloadtest/modlist.json"
-else: jsonFilePath = None
-
-onlineModList.parentWindow = window
-onlineModList.downloadLocation = modsPath
-
-for modID in modsConfig:
-	installedMods[modID] = modsConfig[modID]["Version"]
-onlineModList.installedMods = installedMods
-onlineModList.devMode = devMode
-
-onlineModData = onlineModList.loadMods(jsonFilePath, jsonURL)
+setupOnlineModList()
 if onlineModData == "cannotAccessModList" or onlineModData == False:
-	toolsMenuBar.entryconfig("Online mod list", state="disabled")
-	toolsMenuBar.entryconfig("Check for mod updates", state="disabled")
+	toolsMenuBar.entryconfig("Online Mod list", state="disabled")
+	toolsMenuBar.entryconfig("Check for Mod Updates", state="disabled")
 ## /ONLINE MOD LIST ##
 ### Run it!!1!
 crashDetection()
