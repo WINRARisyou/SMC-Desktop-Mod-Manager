@@ -179,12 +179,12 @@ def checkForModUpdates():
 				print(outdatedMods)
 
 def copyModFile():
-	copyModFiles = filedialog.askopenfiles(title="Please select Mod File(s)", filetypes=[("ZIP files", "*.zip")], multiple=True)
-	if copyModFiles:
-		for file in copyModFiles:
-			if file.name.endswith(".zip"):
-				shutil.copy2(file.name, modsPath)
-				if devMode:	print(f"Copied {file.name} to {modsPath}")
+	modZips = filedialog.askopenfiles(title="Please select Mod File(s)", filetypes=[("ZIP files", "*.zip")], multiple=True)
+	if modZips:
+		for zip in modZips:
+			if zip.name.endswith(".zip"):
+				shutil.copy2(zip.name, modsPath)
+				if devMode:	print(f"Copied {zip.name} to {modsPath}")
 				refreshModsConfig()
 			else:
 				print("Invalid file type. Please select a .zip file.")
@@ -342,10 +342,23 @@ def processFile(modID, modPriority, root, file, assetsPath):
 		if getattr(sys, "frozen", False):
 			pyinstallerPath = sys._MEIPASS
 			with open(os.path.join(gamePath, "modifiedFiles.json"), "w") as f:
-				json.dump({"_MEIPASS": pyinstallerPath, "oldTempDir": temp_dir, "modFiles": moddedFiles, "gameFiles": gameFiles}, f, indent="\t")
+				json.dump(
+					{
+						"_MEIPASS": pyinstallerPath,
+						"oldTempDir": temp_dir,
+						"modFiles": moddedFiles,
+						"gameFiles": gameFiles
+					}, f, indent="\t"
+				)
 		else:
 			with open(os.path.join(gamePath, "modifiedFiles.json"), "w") as f:
-				json.dump({"oldTempDir": temp_dir, "modFiles": moddedFiles, "gameFiles": gameFiles}, f, indent="\t")
+				json.dump(
+					{
+						"oldTempDir": temp_dir,
+						"modFiles": moddedFiles,
+						"gameFiles": gameFiles
+					}, f, indent="\t"
+				)
 
 def readSettingsJSON():
 	global gamePath, settings, mods_json_path, modsPath, winWidth, winHeight
@@ -354,14 +367,17 @@ def readSettingsJSON():
 			settings = json.load(f)
 		gamePath = settings.get("GameLocation")
 		modsPath = settings.get("ModsLocation")
-		if settings.get("Width") == None or type(settings.get("Width")) != int:
+
+		if settings.get("Width") == None or not isinstance(settings.get("Width"), int):
 			with open("settings.json", "w") as f:
 				settings["Width"] = 832
 				json.dump(settings, f, indent="\t")
-		if settings.get("Height") == None or type(settings.get("Height")) != int:
+		
+		if settings.get("Height") == None or not isinstance(settings.get("Height"), int):
 			with open("settings.json", "w") as f:
 				settings["Height"] = 480
 				json.dump(settings, f, indent="\t")
+		
 		winWidth = settings.get("Width")
 		winHeight = settings.get("Height")
 		mods_json_path = os.path.join(modsPath, "mods.json")
@@ -369,16 +385,60 @@ def readSettingsJSON():
 		with open("settings.json", "w") as f:
 			if os.path.exists(os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct") and onWindows:
 				if devMode: print("Super Mario Construct installed via itch.io app")
-				json.dump({"GameLocation": f"{os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct"}", "ModsLocation": "Mods", "Width": 832, "Height": 480, "Modlist": { "Custom Mod Repos": [] }}, f, indent="\t")
+				json.dump(
+					{
+						"GameLocation": f"{os.path.expandvars("%appdata%") + "\\itch\\apps\\super-mario-construct"}",
+						"ModsLocation": "Mods",
+						"Width": 832,
+						"Height": 480,
+						"Modlist": {
+							"Custom Mod Repos": []
+						},
+						"VersionsLocation": ""
+					}, f, indent="\t"
+				)
 			elif os.path.exists(os.path.expanduser("~") + "/.config/itch/apps/super-mario-construct") and not onWindows:
 				if devMode: print("Super Mario Construct installed via itch.io app")
-				json.dump({"GameLocation": f"{os.path.expanduser("~") + "/.config/itch/apps/super-mario-construct"}", "ModsLocation": "Mods", "Width": 832, "Height": 480, "Modlist": { "Custom Mod Repos": [] }}, f, indent="\t")
+				json.dump(
+					{
+						"GameLocation": f"{os.path.expanduser("~") + "/.config/itch/apps/super-mario-construct"}",
+						"ModsLocation": "Mods",
+						"Width": 832,
+						"Height": 480,
+						"Modlist": {
+							"Custom Mod Repos": []
+						},
+						"VersionsLocation": ""
+					}, f, indent="\t"
+				)
 			else:
-				if os.path.exists("Super Mario Construct.exe"):
+				if os.path.exists("Super Mario Construct.exe") or os.path.exists("Super Mario Construct"):
 					if devMode: print("Super Mario Construct installed in current directory")
-					json.dump({"GameLocation": f"{os.getcwd()}", "ModsLocation": "Mods", "Width": 832, "Height": 480, "Modlist": { "Custom Mod Repos": [] }}, f, indent="\t")
+					json.dump(
+						{
+							"GameLocation": f"{os.getcwd()}",
+							"ModsLocation": "Mods",
+							"Width": 832,
+							"Height": 480,
+							"Modlist": {
+								"Custom Mod Repos": []
+							},
+							"VersionsLocation": ""
+						}, f, indent="\t"
+					)
 				else:
-					json.dump({"GameLocation": "", "ModsLocation": "Mods", "Width": 832, "Height": 480, "Modlist": { "Custom Mod Repos": [] }}, f, indent="\t")
+					json.dump(
+						{
+							"GameLocation": "",
+							"ModsLocation": "Mods",
+							"Width": 832,
+							"Height": 480,
+							"Modlist": {
+								"Custom Mod Repos": []
+							},
+							"VersionsLocation": ""
+						}, f, indent="\t"
+					)
 		with open("settings.json") as f:
 			settings = json.load(f)
 		gamePath = settings.get("GameLocation")
@@ -529,7 +589,7 @@ def runGame():
 
 	else:
 		print(f"Game executable not found at {gameExecutable}")
-		messagebox.showerror("Error", f"Game executable not found at {gamePath}")
+		messagebox.showerror("Error", f"Couldn't find SMC in {gamePath}.\nPlease select SMC's location at File > Set Game Location.")
 
 def saveAndPlay():
 	global modifiedFiles, modVars
@@ -538,8 +598,9 @@ def saveAndPlay():
 		modsConfig[modID]["Enabled"] = var.get()
 
 	# Write the updated modsConfig to mods.json
-	with open(mods_json_path, "w") as f:
-		json.dump(modsConfig, f, indent="\t")
+	if modsPath != "" and os.path.exists(modsPath):
+		with open(mods_json_path, "w") as f:
+			json.dump(modsConfig, f, indent="\t")
 
 	for item in modsConfig:
 		if not item:
@@ -549,7 +610,7 @@ def saveAndPlay():
 			if "FileName" in modsConfig[item]:
 				print(modsConfig[item]["FileName"])
 				if modsConfig[item]["FileName"].endswith(".zip") and os.path.isfile(os.path.join(modsPath, modsConfig[item]["FileName"])):
-					modFolderName = modsConfig[item]["FileName"][0:len(item)-4] # chop off .zip
+					modFolderName = modsConfig[item]["FileName"][:-4] # chop off .zip
 					print(modFolderName)
 					with ZipFile(os.path.join(modsPath, modsConfig[item]["FileName"]), "r") as zip:
 						zip.extractall(os.path.join(temp_dir, modFolderName))
@@ -562,6 +623,13 @@ def saveAndPlay():
 				if devMode:	print(modFolderPath + " extracted and parsed\n")
 			else:
 				pass
+
+	if modsPath == "":
+		shouldSetModsLocation = messagebox.askyesno("Warning", "There isn't a mods folder set! Set it now?", icon="warning")
+		if shouldSetModsLocation:
+			setModsLocation()
+			return
+
 	for mod in allModVersions:
 		if allModVersions[mod] != gameVersion and modsConfig[mod]["Enabled"]:
 			if allModVersions[mod].endswith("*"):
@@ -794,21 +862,6 @@ def windowResized(event):
 ## GET PATHS ##
 readSettingsJSON()
 
-# Read or create mods.json
-mods_json_path = os.path.join(modsPath, "mods.json")
-if not os.path.exists(modsPath):
-	os.mkdir(modsPath)
-if not os.path.exists(mods_json_path) or os.path.getsize(mods_json_path) == 0:
-	with open(mods_json_path, "w") as f:
-		json.dump({}, f, indent="\t")
-try:
-	with open(mods_json_path) as f:
-		modsConfig = json.load(f)
-except json.JSONDecodeError as e:
-	print(f"Error reading mods.json: {e}")
-	modsConfig = {}
-	messagebox.showerror("Error", f"Error reading mods.json: {e}\nTry deleting mods.json and see if the error persists.")
-
 # Check if SMC exists in the game path
 def validateGameFolder(path):
 	"""Check if SMC exists in the specified path."""
@@ -832,6 +885,31 @@ def validateModsFolder(path):
 		return False
 	else:
 		return True
+	
+# Read or create mods.json
+mods_json_path = os.path.join(modsPath, "mods.json")
+if not os.path.exists(modsPath) and modsPath != "":
+	try:
+		os.mkdir(modsPath)
+	except Exception as e:
+		print(f"Error creating mods.json at {modsPath}: {e}")
+		messagebox.showerror("Error", f"Error creating mods.json at {modsPath}. Does the directory exist?")
+		with open("settings.json", "w") as f:
+			settings["ModsLocation"] = ""
+			json.dump(settings, f, indent="\t")
+		with open("settings.json", "r") as f:
+			settings = json.load(f)
+
+if os.path.exists(mods_json_path):
+	with open(mods_json_path, "w") as f:
+		json.dump({}, f, indent="\t")
+try:
+	with open(mods_json_path) as f:
+		modsConfig = json.load(f)
+except (Exception, json.JSONDecodeError) as e:
+	print(f"Error reading mods.json: {e}")
+	modsConfig = {}
+	messagebox.showerror("Error", f"Error reading mods.json: {e}\nTry deleting mods.json and see if the error persists.")
 ## /GET PATHS ##
 ## GUI ##
 
@@ -841,7 +919,7 @@ window.bind("<Configure>", windowResized)
 
 icon_path = resPath.resource_path("icons/icon-512.png")
 icon_image = tk.PhotoImage(file=icon_path) # Keep a reference
-window.iconphoto(True, icon_image)
+window.iconphoto(False, icon_image)
 window.title("SMC Desktop Mod Manager")
 window.geometry(f"{winWidth}x{winHeight}")
 
@@ -868,6 +946,7 @@ filesMenuBar.add_command(label="Exit", command=window.quit)
 toolsMenuBar.add_command(label="Online Mod list", command=lambda: onlineModList.createWindow(onlineModList.parentWindow, gameVersion, onlineModData))
 toolsMenuBar.add_command(label="Check for Mod Updates", command=checkForModUpdates)
 toolsMenuBar.add_command(label="Refresh Mods", command=refreshModsConfig)
+toolsMenuBar.add_command(label="Open Version Manager", command=lambda: versionManager.startInstanceManager())
 if devMode:
 	toolsMenuBar.add_separator()
 	toolsMenuBar.add_command(label="Open Temp Folder", command=lambda: os.startfile(temp_dir))
@@ -1026,7 +1105,7 @@ def createModList(sortedMods):
 			deleteModButton.config(state="normal")
 			index = selected[0]
 			modID, modData = sortedMods[index]
-			if sortedMods[index][1].get("FileName") != None:
+			if sortedMods[index][1].get("FileName") is not None:
 				SelectedMod = sortedMods[index][1].get("FileName")
 			else:
 				SelectedMod = sortedMods[index][1].get("FolderPath")
@@ -1107,12 +1186,12 @@ createModList(sortedMods)
 gameVersion = getInstalledGameVersion()
 
 latestGameVersion = makeWebRequest("https://levelsharesquare.com/api/accesspoint/gameversion/SMC", 5, "Could not get latest Game Version")
-if type(latestGameVersion) != str: latestGameVersion = latestGameVersion.json().get("version") 
+if not isinstance(latestGameVersion, str): latestGameVersion = latestGameVersion.json().get("version") 
 
 latestManagerVersion = makeWebRequest("https://winrarisyou.github.io/SMC-Desktop-Mod-Manager/files/current_version.json", 10, "Could not get latest Mod Manager Version")
 updateType = None
-if type(latestManagerVersion) != str: updateType = latestManagerVersion.json().get("updateType")
-if type(latestManagerVersion) != str: latestManagerVersion = latestManagerVersion.json().get("version")
+if not isinstance(latestManagerVersion, str): updateType = latestManagerVersion.json().get("updateType")
+if not isinstance(latestManagerVersion, str): latestManagerVersion = latestManagerVersion.json().get("version")
 
 global gameVersionLabel
 gameFrame = tk.Frame(window)
