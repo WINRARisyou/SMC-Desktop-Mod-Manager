@@ -26,7 +26,7 @@ selectedMod = None
 showOutput = False
 updateOnlineModData = None
 ### /DEFS ###
-### FUNCTIONS
+### FUNCTIONS ###
 def createWindow(baseWindow, gameVer, modlistData, customModRepo=False):
 	global onlineMods
 	onlineMods = subWindow.createSubWindow(baseWindow, "Online mod list", "icons/icon-512.png", [890, 534]) # Create a sub-window
@@ -43,7 +43,7 @@ def createWindow(baseWindow, gameVer, modlistData, customModRepo=False):
 	addModRepo = tk.Menu(optionsMenuBar, tearoff=0)
 	optionsMenuBar.add_cascade(label="Customs", menu=addModRepo)
 
-	addModRepo.add_command(label="View custom mod repos", command=lambda: viewCustomModRepos())
+	addModRepo.add_command(label="Add custom mod repos", command=lambda: viewCustomModRepos())
 	addModRepo.add_command(label="Select custom mod repo", command=lambda: selectCustomModRepo())
 
 	global gameVersion
@@ -401,7 +401,6 @@ def showModRepoDetails():
 	for label in modRepoStatisticsLabels:
 		label.pack()
 ### /FUNCTIONS ###
-
 ### SETTINGS ###
 def addToCombobox(selectedItem, combobox):
 	value = selectedItem.get()
@@ -426,12 +425,13 @@ def addToCombobox(selectedItem, combobox):
 	# repo.split(" (") splits the value at the parenthises, leaving an array with the repo name and url:
 	# ["repo name", "url)"]
 	# to get rid of the ")", repo.split(" (")[1][:-1] takes the second element of the array, and removes the last character from it
+	# this mostly exists so I know what I'm looking at when I read this later on
 	writeSettings([{"name": repo.split(" (")[0], "url": repo.split(" (")[1][:-1]} for repo in comboboxValues])
 	combobox.set(f"{repo_name} ({value})")
 
 def viewCustomModRepos():
 	selectedItem = tk.StringVar()
-	modlistWindow = subWindow.createSubWindow(onlineMods, "View custom mod lists", icon="icons/icon-512.png", size=[607, 114])
+	modlistWindow = subWindow.createSubWindow(onlineMods, "Add custom mod repo", icon="icons/icon-512.png", size=[607, 114])
 	modlistWindow.resizable(False, False)
 	modRepoCombobox = ttk.Combobox(modlistWindow, textvariable=selectedItem, values=[], width=25)
 	# get saved mod list urls
@@ -457,7 +457,7 @@ def viewCustomModRepos():
 
 def selectCustomModRepo():
 	selectedItem = tk.StringVar()
-	modlistWindow = subWindow.createSubWindow(onlineMods, "View custom mod lists", icon="icons/icon-512.png", size=[489, 38])
+	modlistWindow = subWindow.createSubWindow(onlineMods, "Select custom mod repo", icon="icons/icon-512.png", size=[489, 38])
 	modlistWindow.resizable(False, False)
 	modRepoCombobox = ttk.Combobox(modlistWindow, textvariable=selectedItem, values=[], width=25)
 	
